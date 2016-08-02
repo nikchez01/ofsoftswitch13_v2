@@ -177,6 +177,8 @@ struct ofl_exp_action_set_state {
     uint32_t hard_timeout;
     uint32_t idle_timeout;
     uint8_t bit; 
+    uint32_t field_count;
+    uint32_t fields[OFPSC_MAX_FIELD_COUNT];
 };
 
 struct ofl_exp_action_set_global_state {

@@ -765,7 +765,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->header.act_type = ntohl(ext->act_type);
             *dst = (struct ofl_action_header *)da;
 
-            if (*len < sizeof(struct ofp_exp_action_set_state)) {
+            if (*len < sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(ntohl(sa->field_count)),8) ) {
                 OFL_LOG_WARN(LOG_MODULE, "Received SET STATE action has invalid length (%zu).", *len);
                 return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
             }
@@ -787,8 +787,12 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->hard_timeout = ntohl(sa->hard_timeout);
             da->idle_timeout = ntohl(sa->idle_timeout);
             da->bit = sa->bit;
+            da->field_count=ntohl(sa->field_count);
 
-            *len -= sizeof(struct ofp_exp_action_set_state);
+            for (i=0;i<da->field_count;i++)
+                da->fields[i]=ntohl(sa->fields[i]);
+            
+            *len -= sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(da->field_count),8);
             break;
         }
 
@@ -883,12 +887,17 @@ ofl_exp_beba_act_pack(struct ofl_action_header const *src, struct ofp_action_hea
             da->idle_rollback = htonl(sa->idle_rollback);
             da->hard_timeout = htonl(sa->hard_timeout);
             da->idle_timeout = htonl(sa->idle_timeout);
-            memset(da->pad2, 0x00, 4);
-            dst->len = htons(sizeof(struct ofp_exp_action_set_state));
             da->bit = sa->bit;
-            memset(da->pad2, 0x00, 3);
+            memset(da->pad2, 0x00, 7);
+            da->field_count = htonl(sa->field_count);
+            
+            for (i=0;i<sa->field_count;i++)
+                da->fields[i] = htonl(sa->fields[i]);
+            
+            //ROUND_UP to 8 bytes
+            dst->len = htons(sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8));
 
-            return sizeof(struct ofp_exp_action_set_state);
+            return sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
         }
         case (OFPAT_EXP_SET_GLOBAL_STATE):
         {
@@ -931,7 +940,9 @@ ofl_exp_beba_act_ofp_len(struct ofl_action_header const *act)
 
     switch (ext->act_type) {
         case (OFPAT_EXP_SET_STATE):
-            return sizeof(struct ofp_exp_action_set_state);
+            struct ofl_exp_action_set_state *sa = (struct ofl_exp_action_set_state *) act;
+            //ROUND_UP to 8 bytes
+            return sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
         case (OFPAT_EXP_SET_GLOBAL_STATE):
             return sizeof(struct ofp_exp_action_set_global_state);
         case (OFPAT_EXP_INC_STATE):
@@ -953,6 +964,7 @@ ofl_exp_beba_act_to_string(struct ofl_action_header const *act)
             struct ofl_exp_action_set_state *a = (struct ofl_exp_action_set_state *)ext;
             char *string = malloc(200);
             sprintf(string, "{set_state=[state=\"%u\",state_mask=\"%"PRIu32"\",table_id=\"%u\",idle_to=\"%u\",hard_to=\"%u\",idle_rb=\"%u\",hard_rb=\"%u\",bit=\"%u\"]}", a->state, a->state_mask, a->table_id,a->idle_timeout,a->hard_timeout,a->idle_rollback,a->hard_rollback,a->bit);
+            //TODO Davide: print parametric key fields (if any)
             return string;
         }
         case (OFPAT_EXP_SET_GLOBAL_STATE):
@@ -2162,6 +2174,7 @@ ofl_err state_table_set_condition(struct state_table *table, struct ofl_exp_set_
     return 0;
 }
 
+/* Set-flow-data-variable ctrl msg */
 ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p) {
     //TODO Davide: should we update timeouts? Or we should update them only for set flow state??
     //TODO Davide: merge with state_table_set_state()
@@ -2170,15 +2183,8 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
     uint64_t now;
     struct timeval tv;
     int i;
-    uint32_t key_len=0; //update-scope key extractor length
-    struct key_extractor *extractor=&table->write_key;
-    for (i=0; i<extractor->field_count; i++) 
-    {
-        uint32_t type = (int)extractor->fields[i];
-        key_len = key_len + OXM_LENGTH(type);
-    }
-    
-    if(key_len == p->key_len)
+
+    if(table->update_key_extractor.key_len == p->key_len)
     {
         memcpy(key, p->key, p->key_len);
     }
@@ -2187,8 +2193,6 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
         OFL_LOG_WARN(LOG_MODULE, "key extractor length != received key length");
         return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
     }
-
-
 
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, 
         hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
@@ -2241,10 +2245,12 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
     bool entry_to_update_is_cached = act && table->last_lookup_state_entry != NULL &&
             ((act->bit == 0 && table->update_scope_is_eq_lookup_scope) ||
                     (act->bit == 1 && table->bit_update_scope_is_eq_lookup_scope));
+    int i;
 
     if (act) {
         //SET_STATE action
         struct key_extractor *key_extractor_ptr;
+        struct key_extractor dummy_key_extract;
 
         now = 1000000 * pkt->ts.tv_sec + pkt->ts.tv_usec;
         state = act->state;
@@ -2254,9 +2260,34 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
         idle_timeout = act->idle_timeout;
         hard_timeout = act->hard_timeout;
 
-        // Bi-flow handling.
-        // FIXME: rename 'bit' to something more meaningful.
-        key_extractor_ptr = (act->bit == 0) ? &table->update_key_extractor : &table->bit_update_key_extractor;
+        if (act->field_count>0){
+            // hardcoded update-scope
+            OFL_LOG_WARN(LOG_MODULE, "SET_STATE action with hardcoded update-scope");
+
+            dummy_key_extract.table_id = pkt->table_id;
+            dummy_key_extract.field_count = act->field_count;
+            dummy_key_extract.key_len = 0;
+
+            for (i=0;i<act->field_count;i++) {
+                dummy_key_extract.fields[i] = act->fields[i];
+                dummy_key_extract.key_len += OXM_LENGTH((int) act->fields[i]);
+            }
+
+            if (dummy_key_extract.key_len != table->update_key_extractor.key_len){
+                OFL_LOG_WARN(LOG_MODULE, "update key extractor length != hardcoded key length");
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+            }
+
+            if (extractors_are_equal(dummy_key_extract,table->update_key_extractor)){
+                entry_to_update_is_cached = true;
+            }
+            
+            key_extractor_ptr = &dummy_key_extract;
+        } else {
+            // Bi-flow handling.
+            // FIXME: rename 'bit' to something more meaningful.
+            key_extractor_ptr = (act->bit == 0) ? &table->update_key_extractor : &table->bit_update_key_extractor;
+        }
 
         //Extract the key (we avoid to re-extract it if bit-update/update-scope == lookup-scope and the cached entry is not the default)
         if (!entry_to_update_is_cached) {
