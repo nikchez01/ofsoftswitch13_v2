@@ -60,6 +60,7 @@ enum ofp_exp_actions {
     OFPAT_EXP_SET_STATE,
     OFPAT_EXP_SET_GLOBAL_STATE,
     OFPAT_EXP_INC_STATE
+    OFPAT_EXP_SET_DATA_VAR
 };
 
 struct ofp_beba_action_experimenter_header {
@@ -96,6 +97,7 @@ struct ofp_exp_action_set_global_state {
 };
 OFP_ASSERT(sizeof(struct ofp_exp_action_set_global_state) == 24);
 
+
 /* Action structure for OFPAT_EXP_INC_STATE */
 struct ofp_exp_action_inc_state {
     struct ofp_beba_action_experimenter_header header;
@@ -103,6 +105,38 @@ struct ofp_exp_action_inc_state {
     uint8_t pad[7]; 
 };
 OFP_ASSERT(sizeof(struct ofp_exp_action_inc_state) == 24);
+
+/*
+//TODO Davide: refactoring of "ofp_exp_action_set_data_variable" and "ofp_exp_set_condition"
+"operand_types" field can be removed and operand_X can be assigned a value
+0 <= value <= OFPSC_MAX_FLOW_DATA_VAR_NUM-1 for flow data variable ids
+OFPSC_MAX_FLOW_DATA_VAR_NUM <= value <= OFPSC_MAX_FLOW_DATA_VAR_NUM + OFPSC_MAX_GLOBAL_DATA_VAR_NUM -1 for global data var ids
+OFPSC_MAX_FLOW_DATA_VAR_NUM + OFPSC_MAX_GLOBAL_DATA_VAR_NUM <= value <= OFPSC_MAX_FLOW_DATA_VAR_NUM + OFPSC_MAX_GLOBAL_DATA_VAR_NUM + OFPSC_MAX_HEADER_FIELDS -1 for header field extractors
+NB: the CTRL should hide this detail!
+*/
+
+/* Action structure for OFPAT_EXP_SET_DATA_VAR */
+struct ofp_exp_action_set_data_variable {
+    struct ofp_beba_action_experimenter_header header;
+    uint16_t operand_types;
+    uint8_t table_id;
+    uint8_t opcode;
+    uint8_t output;
+    uint8_t pad2[3];   /* Align to 64-bits. */
+    uint8_t operand_1;
+    uint8_t operand_2;
+    uint8_t operand_3;
+    uint8_t operand_4;
+    int8_t coeff_1;
+    int8_t coeff_2;
+    int8_t coeff_3;
+    int8_t coeff_4;
+    uint32_t field_count;
+    uint8_t pad3[4];
+    uint32_t fields[0]; // variable number of fields (sizeof() ignores flexible arrays)
+};
+OFP_ASSERT(sizeof(struct ofp_exp_action_set_data_variable) == 40);
+
 
 /*EXPERIMENTER MESSAGES*/
 /*

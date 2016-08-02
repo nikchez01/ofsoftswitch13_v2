@@ -460,6 +460,51 @@ ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, siz
 }
 
 ofl_err
+check_operands(uint8_t operand_type, uint8_t operand_value, char * operand_name, bool allow_constant, bool allow_header_field) {
+    switch (operand_type){
+        case OPERAND_TYPE_FLOW_DATA_VAR:
+            if (operand_value >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid flow data variable id (%s) (%u).", operand_name, operand_value);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
+            }
+            OFL_LOG_DBG(LOG_MODULE, "Received SET DATA VAR action with OPERAND_TYPE_FLOW_DATA_VAR %s", operand_name);
+            break;
+        case OPERAND_TYPE_GLOBAL_DATA_VAR:
+            if (operand_value >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid global data variable id (%s) (%u).", operand_name, operand_value);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
+            }
+            OFL_LOG_DBG(LOG_MODULE, "Received SET DATA VAR action with OPERAND_TYPE_GLOBAL_DATA_VAR %s", operand_name);
+            break;
+        case OPERAND_TYPE_HEADER_FIELD:
+            if (allow_header_field){
+                if (operand_value >= OFPSC_MAX_HEADER_FIELDS) {
+                    OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid extractor id (%s) (%u).", operand_name, operand_value);
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
+                }
+                OFL_LOG_DBG(LOG_MODULE, "Received SET DATA VAR action with OPERAND_TYPE_HEADER_FIELD %s", operand_name);
+            } else {
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid %s type (%u).", operand_name, operand_value);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
+            }
+            break;
+        case OPERAND_TYPE_CONSTANT:
+            if (allow_constant){
+                OFL_LOG_DBG(LOG_MODULE, "Received SET DATA VAR action with OPERAND_TYPE_CONSTANT %s", operand_name);
+            } else {
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid %s type (%u).", operand_name, operand_value);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
+            }
+            break;
+        default:
+            OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid %s type (%u).", operand_name, operand_value);
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
+    }
+
+    return 0;
+}
+
+ofl_err
 ofl_exp_beba_msg_unpack(struct ofp_header const *oh, size_t *len, struct ofl_msg_experimenter **msg, struct ofl_exp const *exp)
 {
     struct ofp_experimenter_header *exp_header;
@@ -744,6 +789,8 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
 {
     struct ofp_action_experimenter_header const *exp;
     struct ofp_beba_action_experimenter_header const *ext;
+    int i=0;
+    ofl_err error;
 
     if (*len < sizeof(struct ofp_action_experimenter_header)) {
         OFL_LOG_WARN(LOG_MODULE, "Received EXPERIMENTER action has invalid length (%zu).", *len);
@@ -818,6 +865,90 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             *len -= sizeof(struct ofp_exp_action_set_global_state);
             break;
         }
+        case (OFPAT_EXP_SET_DATA_VAR):
+        {
+            struct ofp_exp_action_set_data_variable *sa;
+            struct ofl_exp_action_set_data_variable *da;
+            int i;
+
+            uint16_t operand_types;
+
+            sa = (struct ofp_exp_action_set_data_variable *)ext;
+            da = (struct ofl_exp_action_set_data_variable *)malloc(sizeof(struct ofl_exp_action_set_data_variable));
+            da->header.header.experimenter_id = ntohl(exp->experimenter);
+            da->header.act_type = ntohl(ext->act_type);
+            *dst = (struct ofl_action_header *)da;
+            
+            if (*len < sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(ntohl(sa->field_count)),8) ) {
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid length (%zu)", *len);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+            }
+
+            if (sa->table_id >= PIPELINE_TABLES) {
+                if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
+                    char *ts = ofl_table_to_string(sa->table_id);
+                    OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid table_id (%s).", ts);
+                    free(ts);
+                }
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+            }
+
+            operand_types = ntohs(sa->operand_types);
+
+            // operand_types=aabbccdde0000000 where aa=operand_1_type, bb=operand_2_type, cc=operand_3_type, dd=operand_4_type and e=output_type
+
+            // operand_1 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
+            error = check_operands((operand_types>>14)&3,sa->operand_1,"operand_1",false,true);
+            if (error)
+                return error;
+            // operand_2 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR, HEADER_FIELD or CONSTANT
+            error = check_operands((operand_types>>12)&3,sa->operand_2,"operand_2",true,true);
+            if (error)
+                return error;
+            // output can be FLOW_DATA_VAR or GLOBAL_DATA_VAR
+            error = check_operands((operand_types>>7)&1,sa->output,"output",false,false);
+            if (error)
+                return error;        
+
+            if (sa->opcode>OPCODE_POLY_SUM){
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid opcode (%u).", sa->opcode );
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPCODE);
+            }
+
+            if (sa->opcode==OPCODE_AVG || sa->opcode==OPCODE_VAR || sa->opcode==OPCODE_EWMA || sa->opcode==OPCODE_POLY_SUM){
+                // operand_3 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
+                error = check_operands((operand_types>>10)&3,sa->output,"operand_3",false,true);
+                if (error)
+                    return error;
+            }
+
+            if (sa->opcode==OPCODE_POLY_SUM){
+                // operand_4 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
+                error = check_operands((operand_types>>8)&3,sa->output,"operand_4",false,true);
+                if (error)
+                    return error;
+            }
+            
+            da->table_id = sa->table_id;
+            da->operand_types = ntohs(sa->operand_types);
+            da->opcode = sa->opcode;
+            da->output = sa->output;
+            da->operand_1 = sa->operand_1;
+            da->operand_2 = sa->operand_2;
+            da->operand_3 = sa->operand_3;
+            da->operand_4 = sa->operand_4;
+            da->coeff_1 = sa->coeff_1;
+            da->coeff_2 = sa->coeff_2;
+            da->coeff_3 = sa->coeff_3;
+            da->coeff_4 = sa->coeff_4;
+            da->field_count=ntohl(sa->field_count);
+
+            for (i=0;i<da->field_count;i++)
+                da->fields[i]=ntohl(sa->fields[i]);
+            
+            *len -= sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(ntohl(sa->field_count)),8);
+            break;
+        }
 
         case (OFPAT_EXP_INC_STATE):
         {
@@ -869,6 +1000,7 @@ ofl_exp_beba_act_pack(struct ofl_action_header const *src, struct ofp_action_hea
 
     struct ofl_action_experimenter *exp = (struct ofl_action_experimenter *) src;
     struct ofl_exp_beba_act_header *ext = (struct ofl_exp_beba_act_header *) exp;
+    int i=0;
 
     switch (ext->act_type) {
         case (OFPAT_EXP_SET_STATE):
@@ -927,6 +1059,39 @@ ofl_exp_beba_act_pack(struct ofl_action_header const *src, struct ofp_action_hea
 
             return sizeof(struct ofp_exp_action_inc_state);
         }
+        case (OFPAT_EXP_SET_DATA_VAR): 
+        {
+            struct ofl_exp_action_set_data_variable *sa = (struct ofl_exp_action_set_data_variable *) ext;
+            struct ofp_exp_action_set_data_variable *da = (struct ofp_exp_action_set_data_variable *) dst;
+
+            da->header.header.experimenter = htonl(exp->experimenter_id);
+            da->header.act_type = htonl(ext->act_type);
+            memset(da->header.pad, 0x00, 4);
+
+            da->table_id = sa->table_id;
+            da->operand_types = htons(sa->operand_types);
+            da->opcode = sa->opcode;
+            da->output = sa->output;
+            memset(da->pad2, 0x00, 3);
+            da->operand_1 = sa->operand_1;
+            da->operand_2 = sa->operand_2;
+            da->operand_3 = sa->operand_3;
+            da->operand_4 = sa->operand_4;
+            da->coeff_1 = sa->coeff_1;
+            da->coeff_2 = sa->coeff_2;
+            da->coeff_3 = sa->coeff_3;
+            da->coeff_4 = sa->coeff_4;
+            memset(da->pad3, 0x00, 4);
+            da->field_count = htonl(sa->field_count);
+            
+            for (i=0;i<sa->field_count;i++)
+                da->fields[i] = htonl(sa->fields[i]);
+            
+            //ROUND_UP to 8 bytes
+            dst->len = htons(sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8));
+
+            return sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
+        }
         default:
             return 0;
     }
@@ -940,13 +1105,20 @@ ofl_exp_beba_act_ofp_len(struct ofl_action_header const *act)
 
     switch (ext->act_type) {
         case (OFPAT_EXP_SET_STATE):
+        {
             struct ofl_exp_action_set_state *sa = (struct ofl_exp_action_set_state *) act;
             //ROUND_UP to 8 bytes
             return sizeof(struct ofp_exp_action_set_state) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
+        }
         case (OFPAT_EXP_SET_GLOBAL_STATE):
             return sizeof(struct ofp_exp_action_set_global_state);
         case (OFPAT_EXP_INC_STATE):
             return sizeof(struct ofp_exp_action_inc_state);
+        case (OFPAT_EXP_SET_DATA_VAR):{
+            struct ofl_exp_action_set_data_variable *sa = (struct ofl_exp_action_set_data_variable *) act;
+            //ROUND_UP to 8 bytes
+            return sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
+        }
         default:
             return 0;
     }
@@ -982,6 +1154,84 @@ ofl_exp_beba_act_to_string(struct ofl_action_header const *act)
             char *string = malloc(100);
             sprintf(string, "{inc_state=[table_id=\"%u\"]}", a->table_id);
             return string;
+        case (OFPAT_EXP_SET_DATA_VAR):
+        {
+            struct ofl_exp_action_set_data_variable *a = (struct ofl_exp_action_set_data_variable *)ext;
+            char *string = malloc(300);
+
+            // operand_types=aabbccdde0000000 where aa=operand_1_type, bb=operand_2_type, cc=operand_3_type, dd=operand_4_type and e=output_type
+
+            //TODO Davide: create function
+            sprintf(string, "{set_data_variable=[table_id=\"%u\",opcode=\"%u\",", a->table_id, a->opcode);
+            switch ((a->operand_types>>14)&3){
+                case OPERAND_TYPE_FLOW_DATA_VAR:
+                    sprintf(string + strlen(string), "operand_1=\"flow_data_var_%u\",",a->operand_1);
+                    break;
+                case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                    sprintf(string + strlen(string), "operand_1=\"global_data_var_%u\",",a->operand_1);
+                    break;
+                case OPERAND_TYPE_HEADER_FIELD:
+                    sprintf(string + strlen(string), "operand_1=\"header_field_%u\",",a->operand_1);
+                    break;
+            }
+
+            switch ((a->operand_types>>12)&3){
+                case OPERAND_TYPE_FLOW_DATA_VAR:
+                    sprintf(string + strlen(string), "operand_2=\"flow_data_var_%u\",",a->operand_2);
+                    break;
+                case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                    sprintf(string + strlen(string), "operand_2=\"global_data_var_%u\",",a->operand_2);
+                    break;
+                case OPERAND_TYPE_HEADER_FIELD:
+                    sprintf(string + strlen(string), "operand_2=\"header_field_%u\",",a->operand_2);
+                    break;
+                case OPERAND_TYPE_CONSTANT:
+                    sprintf(string + strlen(string), "operand_2=\"%u\",",a->operand_2);
+                    break;
+            }
+
+            if (a->opcode==OPCODE_AVG || a->opcode==OPCODE_VAR || a->opcode==OPCODE_EWMA || a->opcode==OPCODE_POLY_SUM){
+                switch ((a->operand_types>>10)&3){
+                    case OPERAND_TYPE_FLOW_DATA_VAR:
+                        sprintf(string + strlen(string), "operand_3=\"flow_data_var_%u\",",a->operand_3);
+                        break;
+                    case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                        sprintf(string + strlen(string), "operand_3=\"global_data_var_%u\",",a->operand_3);
+                        break;
+                    case OPERAND_TYPE_HEADER_FIELD:
+                        sprintf(string + strlen(string), "operand_3=\"header_field_%u\",",a->operand_3);
+                        break;
+                }
+            }
+
+            if (a->opcode==OPCODE_POLY_SUM){
+                switch ((a->operand_types>>8)&3){
+                    case OPERAND_TYPE_FLOW_DATA_VAR:
+                        sprintf(string + strlen(string), "operand_4=\"flow_data_var_%u\",",a->operand_4);
+                        break;
+                    case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                        sprintf(string + strlen(string), "operand_4=\"global_data_var_%u\",",a->operand_4);
+                        break;
+                    case OPERAND_TYPE_HEADER_FIELD:
+                        sprintf(string + strlen(string), "operand_4=\"header_field_%u\",",a->operand_4);
+                        break;
+                }
+                sprintf(string + strlen(string), "coeff_1=\"%d\",coeff_2=\"%d\",coeff_3=\"%d\",coeff_4=\"%d\",",a->coeff_1,a->coeff_2,a->coeff_3,a->coeff_4);
+            }
+
+            switch ((a->operand_types>>7)&1){
+                case OPERAND_TYPE_FLOW_DATA_VAR:
+                    sprintf(string + strlen(string), "output=\"flow_data_var_%u\"",a->output);
+                    break;
+                case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                    sprintf(string + strlen(string), "output=\"global_data_var_%u\"",a->output);
+                    break;
+            }
+                
+            sprintf(string + strlen(string), "]}");
+            //TODO Davide: print parametric key fields (if any)
+            return string;
+            break;
         }
     }
     return NULL;
@@ -1008,6 +1258,11 @@ ofl_exp_beba_act_free(struct ofl_action_header *act)
         case (OFPAT_EXP_INC_STATE):
         {
             struct ofl_exp_action_inc_state *a = (struct ofl_exp_action_inc_state *)ext;
+            free(a);
+            break;
+        case (OFPAT_EXP_SET_DATA_VAR):
+        {
+            struct ofl_exp_action_set_data_variable *a = (struct ofl_exp_action_set_data_variable *)ext;
             free(a);
             break;
         }
@@ -2174,8 +2429,13 @@ ofl_err state_table_set_condition(struct state_table *table, struct ofl_exp_set_
     return 0;
 }
 
+/* Set-flow-data-variable action */
+void state_table_set_data_variable(struct state_table *table, struct ofl_exp_action_set_data_variable *act, struct packet *pkt) {
+
+}
+
 /* Set-flow-data-variable ctrl msg */
-ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p) {
+ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *msg) {
     //TODO Davide: should we update timeouts? Or we should update them only for set flow state??
     //TODO Davide: merge with state_table_set_state()
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};   
@@ -2184,9 +2444,9 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
     struct timeval tv;
     int i;
 
-    if(table->update_key_extractor.key_len == p->key_len)
+    if(table->update_key_extractor.key_len == msg->key_len)
     {
-        memcpy(key, p->key, p->key_len);
+        memcpy(key, msg->key, msg->key_len);
     }
     else
     {
@@ -2197,8 +2457,8 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, 
         hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
             if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
-                OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry found. Updating flow_data_var[%d]=%d",p->flow_data_variable_id,(e->flow_data_var[p->flow_data_variable_id] & ~(p->mask)) | (p->value & p->mask));
-                e->flow_data_var[p->flow_data_variable_id] = (e->flow_data_var[p->flow_data_variable_id] & ~(p->mask)) | (p->value & p->mask);
+                OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry found. Updating flow_data_var[%d]=%d",msg->flow_data_variable_id,(e->flow_data_var[msg->flow_data_variable_id] & ~(msg->mask)) | (msg->value & msg->mask));
+                e->flow_data_var[msg->flow_data_variable_id] = (e->flow_data_var[msg->flow_data_variable_id] & ~(msg->mask)) | (msg->value & msg->mask);
                 return 0;
             }
             return 0;
@@ -2219,10 +2479,10 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
     e->state = STATE_DEFAULT;
     for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
         e->flow_data_var[i]=0;
-    e->flow_data_var[p->flow_data_variable_id] = p->value & p->mask;
+    e->flow_data_var[msg->flow_data_variable_id] = msg->value & msg->mask;
 
     hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
-    OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry not found! A new state entry will be created with flow_data_var[%d]=%d",p->flow_data_variable_id,e->flow_data_var[p->flow_data_variable_id]);
+    OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry not found! A new state entry will be created with flow_data_var[%d]=%d",msg->flow_data_variable_id,e->flow_data_var[msg->flow_data_variable_id]);
     
     return 0;
 }

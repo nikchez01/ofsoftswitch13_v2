@@ -106,6 +106,30 @@ struct ofl_exp_del_pkttmp {
 	uint32_t pkttmp_id;
 };
 
+struct ofl_exp_set_condition {
+    uint8_t table_id;
+    uint8_t condition_id;
+    uint8_t condition;
+    uint8_t operand_types;
+    uint8_t operand_1;
+    uint8_t operand_2;
+};
+
+struct ofl_exp_set_global_data_variable {
+    uint8_t table_id;
+    uint8_t global_data_variable_id;
+    uint32_t value;
+    uint32_t mask;
+};
+
+struct ofl_exp_set_flow_data_variable {
+    uint8_t table_id;
+    uint8_t flow_data_variable_id;
+    uint32_t key_len;
+    uint32_t value;
+    uint32_t mask;
+    uint8_t key[OFPSC_MAX_KEY_LEN];
+};
 
 /*************************
 * Multipart reply message: State entry statistics
@@ -190,32 +214,27 @@ struct ofl_exp_action_set_global_state {
 
 struct ofl_exp_action_inc_state {
     struct ofl_exp_beba_act_header header; /* OFPAT_EXP_INC_STATE */
+    
     uint8_t table_id;
 };
 
-struct ofl_exp_set_condition {
+struct ofl_exp_action_set_data_variable {
+    struct ofl_exp_beba_act_header   header; /* OFPAT_EXP_SET_DATA VARIABLE */
+
+    uint16_t operand_types;
     uint8_t table_id;
-    uint8_t condition_id;
-    uint8_t condition;
-    uint8_t operand_types;
+    uint8_t opcode;
+    uint8_t output;
     uint8_t operand_1;
     uint8_t operand_2;
-};
-
-struct ofl_exp_set_global_data_variable {
-    uint8_t table_id;
-    uint8_t global_data_variable_id;
-    uint32_t value;
-    uint32_t mask;
-};
-
-struct ofl_exp_set_flow_data_variable {
-    uint8_t table_id;
-    uint8_t flow_data_variable_id;
-    uint32_t key_len;
-    uint32_t value;
-    uint32_t mask;
-    uint8_t key[OFPSC_MAX_KEY_LEN];
+    uint8_t operand_3;
+    uint8_t operand_4;
+    int8_t coeff_1;
+    int8_t coeff_2;
+    int8_t coeff_3;
+    int8_t coeff_4;
+    uint32_t field_count;
+    uint32_t fields[OFPSC_MAX_FIELD_COUNT];
 };
 
 /*************************************************************************/
@@ -240,6 +259,7 @@ struct key_extractor {
 
 struct state_entry {
     struct hmap_node            hmap_node;
+    uint8_t                     key[OFPSC_MAX_KEY_LEN];
     uint32_t                    state;
     uint32_t                    flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM];
 
@@ -338,6 +358,9 @@ retrieve_condition_operand(uint32_t *operand_value, uint8_t operand_type, uint8_
 ofl_err
 state_table_set_condition(struct state_table *table, struct ofl_exp_set_condition *p);
 
+void
+state_table_set_data_variable(struct state_table *table, struct ofl_exp_action_set_data_variable *act, struct packet *pkt);
+
 ofl_err
 state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p);
 
@@ -360,6 +383,9 @@ ofl_structs_set_flow_data_var_unpack(struct ofp_exp_set_flow_data_variable const
 
 int
 ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, size_t *buf_len, struct ofl_exp const *exp);
+
+ofl_err
+check_operands(uint8_t operand_type, uint8_t operand_value, char * operand_name, bool allow_constant, bool allow_header_field);
 
 ofl_err
 ofl_exp_beba_msg_unpack(struct ofp_header const *oh, size_t *len, struct ofl_msg_experimenter **msg, struct ofl_exp const *exp);
