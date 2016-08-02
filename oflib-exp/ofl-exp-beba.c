@@ -1972,7 +1972,7 @@ state_table_flush(struct state_table *table)
     }
 }
 
-/*having the read_key, look for the state value inside the state_table */
+/*having the read_key, look for the state vaule inside the state_table */
 struct state_entry * state_table_lookup(struct state_table* table, struct packet *pkt)
 {
     struct state_entry * e = NULL;
@@ -3468,15 +3468,15 @@ bool retrieve_condition_operand(uint32_t *operand_value, uint8_t operand_type, u
             }
             switch (field_len){
                 case 4:{
-                    *operand_value = (uint32_t) *((uint32_t*) key);
+                    memcpy(operand_value,key,4);
                     break;
                 }
                 case 2:{
-                    *operand_value = (uint32_t) (*((uint16_t*) key));
+                    memcpy(operand_value,key,2);
                     break;
                 }
                 case 1:{
-                    *operand_value = (uint32_t)  *((uint8_t*) key);
+                    memcpy(operand_value,key,1);
                     break;
                 }
             }
