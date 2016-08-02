@@ -16,7 +16,15 @@
 
 enum oxm_exp_match_fields {
     OFPXMT_EXP_GLOBAL_STATE,      /* Global state */
-    OFPXMT_EXP_STATE       /* Flow State */
+    OFPXMT_EXP_STATE,             /* Flow State */
+    OFPXMT_EXP_CONDITION0,        /* Condition 0 */
+    OFPXMT_EXP_CONDITION1,        /* Condition 1 */
+    OFPXMT_EXP_CONDITION2,        /* Condition 2 */
+    OFPXMT_EXP_CONDITION3,        /* Condition 3 */
+    OFPXMT_EXP_CONDITION4,        /* Condition 4 */
+    OFPXMT_EXP_CONDITION5,        /* Condition 5 */
+    OFPXMT_EXP_CONDITION6,        /* Condition 6 */
+    OFPXMT_EXP_CONDITION7,        /* Condition 7 */
 };
 
 /****************************************************************
@@ -122,7 +130,17 @@ enum ofp_exp_beba_errors{
     OFPEC_BAD_MATCH_WILDCARD,
     OFPET_BAD_EXP_INSTRUCTION,
     OFPEC_EXP_PKTTMP_MOD_FAILED,
-    OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND
+    OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND,
+    OFPEC_BAD_EXTRACTOR_ID,
+    OFPEC_BAD_CONDITION_ID,
+    OFPEC_BAD_CONDITION,
+    OFPEC_BAD_OPERAND_TYPE,
+    OFPEC_BAD_FLOW_DATA_VAR_ID,
+    OFPEC_BAD_GLOBAL_DATA_VAR_ID,
+    OFPEC_BAD_HEADER_FIELD_SIZE,
+    OFPEC_BAD_OPCODE,
+    OFPEC_BAD_HEADER_EXTRACTOR,
+    OFPEC_BAD_SOURCE_TYPE
 };
 
 /****************************************************************
@@ -132,6 +150,11 @@ enum ofp_exp_beba_errors{
 ****************************************************************/
 #define OFPSC_MAX_FIELD_COUNT 6
 #define OFPSC_MAX_KEY_LEN 48
+#define OFPSC_MAX_HEADER_FIELDS 8
+#define OFPSC_MAX_CONDITIONS_NUM 8
+#define OFPSC_MAX_FLOW_DATA_VAR_NUM 6
+#define OFPSC_MAX_GLOBAL_DATA_VAR_NUM 8
+#define MULTIPLY_FACTOR 1000 // used for OPCODE_AVG, OPCODE_VAR and OPCODE_EWMA
 
 struct ofp_exp_msg_state_mod {
     struct ofp_experimenter_header header; /* OpenFlow's standard experimenter message header */
@@ -205,6 +228,74 @@ struct ofp_exp_set_global_state {
     uint32_t global_state_mask;
 };
 
+struct ofp_exp_set_header_field_extractor {
+    uint8_t table_id;
+    uint8_t extractor_id;
+    uint8_t pad[2];
+    uint32_t field;
+};
+
+struct ofp_exp_set_condition {
+    uint8_t table_id;
+    uint8_t condition_id;
+    uint8_t condition;
+    uint8_t operand_types;
+    uint8_t operand_1;
+    uint8_t operand_2;
+    uint8_t pad[2];
+};
+
+struct ofp_exp_set_global_data_variable {
+    uint8_t table_id;
+    uint8_t global_data_variable_id;
+    uint8_t pad[2];
+    uint32_t value;
+    uint32_t mask;
+};
+
+struct ofp_exp_set_flow_data_variable {
+    uint8_t table_id;
+    uint8_t flow_data_variable_id;
+    uint8_t pad[2];
+    uint32_t key_len;
+    uint32_t value;
+    uint32_t mask;
+    uint8_t key[OFPSC_MAX_KEY_LEN];
+};
+
+enum ofp_exp_operand_types {
+    OPERAND_TYPE_FLOW_DATA_VAR = 0,
+    OPERAND_TYPE_GLOBAL_DATA_VAR,
+    OPERAND_TYPE_HEADER_FIELD,
+    OPERAND_TYPE_CONSTANT
+};
+
+enum ofp_exp_conditions {
+    CONDITION_GT = 0,
+    CONDITION_LT,
+    CONDITION_GTE,
+    CONDITION_LTE,
+    CONDITION_EQ,
+    CONDITION_NEQ
+};
+
+enum ofp_exp_opcode {
+    OPCODE_SUM = 0,
+    OPCODE_SUB,
+    OPCODE_MUL,
+    OPCODE_DIV,
+    OPCODE_AVG,
+    OPCODE_VAR,
+    OPCODE_EWMA,
+    OPCODE_POLY_SUM
+};
+
+enum ofp_exp_source_types {
+    SOURCE_TYPE_FLOW_DATA_VAR = 0,
+    SOURCE_TYPE_GLOBAL_DATA_VAR,
+    SOURCE_TYPE_STATE
+};
+
 enum ofp_exp_msg_state_mod_commands {
     OFPSC_STATEFUL_TABLE_CONFIG = 0,
     OFPSC_EXP_SET_L_EXTRACTOR,
@@ -212,7 +303,11 @@ enum ofp_exp_msg_state_mod_commands {
     OFPSC_EXP_SET_FLOW_STATE,   
     OFPSC_EXP_DEL_FLOW_STATE,
     OFPSC_EXP_SET_GLOBAL_STATE,
-    OFPSC_EXP_RESET_GLOBAL_STATE   
+    OFPSC_EXP_RESET_GLOBAL_STATE,
+    OFPSC_EXP_SET_HEADER_FIELD_EXTRACTOR,
+    OFPSC_EXP_SET_CONDITION,
+    OFPSC_EXP_SET_GLOBAL_DATA_VAR,
+    OFPSC_EXP_SET_FLOW_DATA_VAR
 };
 
 /****************************************************************

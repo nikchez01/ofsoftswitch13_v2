@@ -80,6 +80,12 @@ struct ofl_exp_set_global_state {
     uint32_t global_state_mask;
 };
 
+struct ofl_exp_set_header_field_extractor {
+    uint8_t table_id;
+    uint8_t extractor_id;
+    uint32_t field;
+};
+
 /************************
  * pkttmp mod messages
  ************************/
@@ -182,14 +188,45 @@ struct ofl_exp_action_set_global_state {
 
 struct ofl_exp_action_inc_state {
     struct ofl_exp_beba_act_header header; /* OFPAT_EXP_INC_STATE */
-
     uint8_t table_id;
+};
+
+struct ofl_exp_set_condition {
+    uint8_t table_id;
+    uint8_t condition_id;
+    uint8_t condition;
+    uint8_t operand_types;
+    uint8_t operand_1;
+    uint8_t operand_2;
+};
+
+struct ofl_exp_set_global_data_variable {
+    uint8_t table_id;
+    uint8_t global_data_variable_id;
+    uint32_t value;
+    uint32_t mask;
+};
+
+struct ofl_exp_set_flow_data_variable {
+    uint8_t table_id;
+    uint8_t flow_data_variable_id;
+    uint32_t key_len;
+    uint32_t value;
+    uint32_t mask;
+    uint8_t key[OFPSC_MAX_KEY_LEN];
 };
 
 /*************************************************************************/
 /*                        experimenter state table						 */
 /*************************************************************************/
 
+struct condition_table_entry {
+    uint8_t condition;
+    uint8_t operand_1_type;
+    uint8_t operand_2_type;
+    uint8_t operand_1;
+    uint8_t operand_2;
+};
 
 struct key_extractor {
     uint8_t                     table_id;
@@ -201,8 +238,9 @@ struct key_extractor {
 
 struct state_entry {
     struct hmap_node            hmap_node;
-    uint8_t             key[MAX_STATE_KEY_LEN];
-    uint32_t                state;
+    uint32_t                    state;
+    uint32_t                    flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM];
+
     struct ofl_exp_state_stats   *stats;
     uint64_t                created;  /* time the entry was created at [us] */
     uint64_t                remove_at; /* time the entry should be removed at
@@ -214,6 +252,9 @@ struct state_table {
     struct key_extractor        lookup_key_extractor;
     struct key_extractor        update_key_extractor;
     struct key_extractor        bit_update_key_extractor;
+    struct key_extractor        header_field_extractor[OFPSC_MAX_HEADER_FIELDS];
+    struct condition_table_entry*  condition_table[OFPSC_MAX_CONDITIONS_NUM];
+    uint32_t                    global_data_var[OFPSC_MAX_GLOBAL_DATA_VAR_NUM];
     struct hmap                 state_entries;
     struct state_entry          default_state_entry;
     struct state_entry          null_state_entry;
@@ -286,7 +327,34 @@ state_table_set_extractor(struct state_table *, struct key_extractor *, int);
 ofl_err
 state_table_del_state(struct state_table *, uint8_t *, uint32_t);
 
+void
+state_table_timeout(struct state_table *table);
+
+bool
+retrieve_condition_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, uint8_t operand_num, struct state_table *state_table, struct packet *pkt);
+
+ofl_err
+state_table_set_condition(struct state_table *table, struct ofl_exp_set_condition *p);
+
+ofl_err
+state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p);
+
+ofl_err
+state_table_set_header_field_extractor(struct state_table *table, struct ofl_exp_set_header_field_extractor *hfe);
+
+int
+state_table_evaluate_condition(struct state_table *state_table,struct packet *pkt,struct condition_table_entry* condition_table_entry);
+
 /*experimenter message functions*/
+
+ofl_err
+ofl_structs_set_condition_unpack(struct ofp_exp_set_condition const *src, size_t *len, struct ofl_exp_set_condition *dst);
+
+ofl_err
+ofl_structs_set_global_data_var_unpack(struct ofp_exp_set_global_data_variable const *src, size_t *len, struct ofl_exp_set_global_data_variable *dst);
+
+ofl_err
+ofl_structs_set_flow_data_var_unpack(struct ofp_exp_set_flow_data_variable const *src, size_t *len, struct ofl_exp_set_flow_data_variable *dst);
 
 int
 ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, size_t *buf_len, struct ofl_exp const *exp);

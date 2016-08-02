@@ -310,7 +310,15 @@ ofl_actions_unpack(struct ofp_action_header const *src, size_t *len, struct ofl_
                                     || da->field->header == OXM_OF_METADATA
                                     || da->field->header == OXM_OF_IPV6_EXTHDR
 									|| da->field->header == OXM_EXP_GLOBAL_STATE
-                                    || da->field->header == OXM_EXP_STATE){
+                                    || da->field->header == OXM_EXP_STATE
+                                    || da->field->header == OXM_EXP_CONDITION0
+                                    || da->field->header == OXM_EXP_CONDITION1
+                                    || da->field->header == OXM_EXP_CONDITION2
+                                    || da->field->header == OXM_EXP_CONDITION3
+                                    || da->field->header == OXM_EXP_CONDITION4
+                                    || da->field->header == OXM_EXP_CONDITION5
+                                    || da->field->header == OXM_EXP_CONDITION6
+                                    || da->field->header == OXM_EXP_CONDITION7){
 				
                 error = ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_SET_TYPE);
                 break;

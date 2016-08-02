@@ -209,6 +209,189 @@ ofl_structs_set_global_state_unpack(struct ofp_exp_set_global_state const *src, 
     return 0;
 }
 
+static ofl_err
+ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor const *src, size_t *len, struct ofl_exp_set_header_field_extractor *dst) {
+
+    if(*len == sizeof(struct ofp_exp_set_header_field_extractor)){
+        if (src->table_id >= PIPELINE_TABLES) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid table id (%u).", src->table_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+        }
+        if (src->extractor_id >= OFPSC_MAX_HEADER_FIELDS) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (%u).", src->extractor_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
+        }
+        // header field extractor should be a field <=32 bit 
+        if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid header field size (%u).", OXM_LENGTH(ntohl(src->field)));
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_FIELD_SIZE);
+        }
+
+        dst->table_id = src->table_id;
+        dst->extractor_id = src->extractor_id;
+        dst->field = ntohl(src->field);
+    }
+    else {
+        //check of struct ofp_exp_set_header_field_extractor length.
+        OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD set_header_field has invalid length (%zu).", *len);
+        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+    }
+
+    *len -= sizeof(struct ofp_exp_set_header_field_extractor);
+
+    return 0;
+}
+
+ofl_err
+ofl_structs_set_condition_unpack(struct ofp_exp_set_condition const *src, size_t *len, struct ofl_exp_set_condition *dst) {
+
+    if(*len == sizeof(struct ofp_exp_set_condition)) {
+        if (src->table_id >= PIPELINE_TABLES) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid table id (%u).", src->table_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+        }
+
+        if (src->condition_id >= OFPSC_MAX_CONDITIONS_NUM) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid condition id (%u).", src->condition_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_CONDITION_ID);
+        }
+
+        if (src->condition > 5) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid condition (%u).", src->condition );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_CONDITION);
+        }
+
+        // operand_types=xxyy0000 where xx=operand_1_type and yy=operand_2_type
+        switch((src->operand_types>>6)&3){
+            case OPERAND_TYPE_FLOW_DATA_VAR:
+                if (src->operand_1 >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid flow data variable id (operand_1) (%u).", src->operand_1 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
+                }
+                break;
+            case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                if (src->operand_1 >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid global data variable id (operand_1) (%u).", src->operand_1 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
+                }
+                break;
+            case OPERAND_TYPE_HEADER_FIELD:
+                if (src->operand_1 >= OFPSC_MAX_HEADER_FIELDS) {
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (operand_1) (%u).", src->operand_1 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
+                }
+                break;
+            default:
+                OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid operand 1 type (%u).", (src->operand_types>>6)&3);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
+            }  
+        
+        switch((src->operand_types>>4)&3){
+            case OPERAND_TYPE_FLOW_DATA_VAR:
+                if (src->operand_2 >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid flow data variable id (operand_2) (%u).", src->operand_2 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
+                }
+                break;
+            case OPERAND_TYPE_GLOBAL_DATA_VAR:
+                if (src->operand_2 >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid global data variable id (operand_2) (%u).", src->operand_2 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
+                }
+                break;
+            case OPERAND_TYPE_HEADER_FIELD:
+                if (src->operand_2 >= OFPSC_MAX_HEADER_FIELDS) {
+                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (operand_2) (%u).", src->operand_2 );
+                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
+                }
+                break;
+            default:
+                OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid operand 2 type (%u).", (src->operand_types>>4)&3);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
+            } 
+
+        dst->table_id = src->table_id;
+        dst->condition_id = src->condition_id;
+        dst->condition = src->condition;
+        dst->operand_types = src->operand_types;
+        dst->operand_1 = src->operand_1;
+        dst->operand_2 = src->operand_2;
+
+    }
+    else {
+        //check of struct ofp_exp_set_condition length.
+        OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD set_condition has invalid length (%zu).", *len);
+        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+    }
+
+    *len -= sizeof(struct ofp_exp_set_condition);
+
+    return 0;
+}
+
+ofl_err
+ofl_structs_set_global_data_var_unpack(struct ofp_exp_set_global_data_variable const *src, size_t *len, struct ofl_exp_set_global_data_variable *dst) {
+
+    if(*len == sizeof(struct ofp_exp_set_global_data_variable)) {
+        if (src->table_id >= PIPELINE_TABLES) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid table id (%u).", src->table_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+        }
+        if (src->global_data_variable_id >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid global data variable id (%u).", src->global_data_variable_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
+        }
+        dst->table_id = src->table_id;
+        dst->global_data_variable_id = src->global_data_variable_id;
+        dst->value=ntohl(src->value);
+        dst->mask=ntohl(src->mask);
+    }
+    else {
+        //check of struct ofp_exp_set_global_data_variable length.
+        OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD set_global_data_var has invalid length (%zu).", *len);
+        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+    }
+
+    *len -= sizeof(struct ofp_exp_set_global_data_variable);
+
+    return 0;
+}
+
+ofl_err
+ofl_structs_set_flow_data_var_unpack(struct ofp_exp_set_flow_data_variable const *src, size_t *len, struct ofl_exp_set_flow_data_variable *dst) {
+    int i;
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
+
+    if((*len == ((4*sizeof(uint8_t) + 3*sizeof(uint32_t) + ntohl(src->key_len)*sizeof(uint8_t)))) && (ntohl(src->key_len)>0)){
+        if (src->table_id >= PIPELINE_TABLES) {
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid table id (%u).", src->table_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+        }
+        if (src->flow_data_variable_id >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid FLOW data variable id (%u).", src->flow_data_variable_id );
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
+        }
+
+        dst->table_id = src->table_id;
+        dst->flow_data_variable_id = src->flow_data_variable_id;
+        dst->value=ntohl(src->value);
+        dst->mask=ntohl(src->mask);
+        dst->key_len=ntohl(src->key_len);
+        for (i=0;i<dst->key_len;i++)
+            key[i]=src->key[i];
+        memcpy(dst->key, key, dst->key_len);
+    }
+    else {
+        //check of struct ofp_exp_set_flow_data_variable length.
+        OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD set_flow_data_var is too short (%zu).", *len);
+        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+    }
+
+    *len -= ((4*sizeof(uint8_t) + 3*sizeof(uint32_t) + ntohl(src->key_len)*sizeof(uint8_t)));
+
+    return 0;
+}
+
 int
 ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, size_t *buf_len, struct ofl_exp const *exp UNUSED)
 {
@@ -327,10 +510,22 @@ ofl_exp_beba_msg_unpack(struct ofp_header const *oh, size_t *len, struct ofl_msg
                                                     (struct ofl_exp_set_flow_state *)&(dm->payload[0]));
                 case OFPSC_EXP_DEL_FLOW_STATE:
                     return ofl_structs_del_flow_state_unpack((struct ofp_exp_del_flow_state const *)&(sm->payload[0]), len,
-                                                        (struct ofl_exp_del_flow_state *)&(dm->payload[0]));
+                                                    (struct ofl_exp_del_flow_state *)&(dm->payload[0]));
                 case OFPSC_EXP_SET_GLOBAL_STATE:
                     return ofl_structs_set_global_state_unpack((struct ofp_exp_set_global_state const *)&(sm->payload[0]), len,
-                                                          (struct ofl_exp_set_global_state *)&(dm->payload[0]));
+                                                    (struct ofl_exp_set_global_state *)&(dm->payload[0]));
+                case OFPSC_EXP_SET_HEADER_FIELD_EXTRACTOR:
+                    return ofl_structs_set_header_field_unpack((struct ofp_exp_set_header_field_extractor const *)&(sm->payload[0]), len,
+                                                    (struct ofl_exp_set_header_field_extractor *)&(dm->payload[0]));
+                case OFPSC_EXP_SET_CONDITION:
+                    return ofl_structs_set_condition_unpack((struct ofp_exp_set_condition const *)&(sm->payload[0]), len,
+                                                    (struct ofl_exp_set_condition *)&(dm->payload[0]));
+                case OFPSC_EXP_SET_GLOBAL_DATA_VAR:
+                    return ofl_structs_set_global_data_var_unpack((struct ofp_exp_set_global_data_variable const *)&(sm->payload[0]), len,
+                                                    (struct ofl_exp_set_global_data_variable *)&(dm->payload[0]));
+                case OFPSC_EXP_SET_FLOW_DATA_VAR:
+                    return ofl_structs_set_flow_data_var_unpack((struct ofp_exp_set_flow_data_variable const *)&(sm->payload[0]), len,
+                                                    (struct ofl_exp_set_flow_data_variable *)&(dm->payload[0]));
                 default:
                     return ofl_error(OFPET_EXPERIMENTER, OFPEC_EXP_STATE_MOD_BAD_COMMAND);
             }
@@ -1215,6 +1410,37 @@ ofl_exp_beba_field_unpack(struct ofl_match *match, struct oxm_field const *f, vo
             }
             return 0;
         }
+        case OFI_OXM_EXP_CONDITION0:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION1:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION2:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION3:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION4:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION5:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }case OFI_OXM_EXP_CONDITION6:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
+        case OFI_OXM_EXP_CONDITION7:{
+            ofl_structs_match_exp_put8(match, f->header, ntohl(*((uint32_t*) experimenter_id)), *((uint8_t*) value));
+            return 0;
+        }
         default:
             NOT_REACHED();
     }
@@ -1631,13 +1857,19 @@ ofl_exp_beba_inst_to_string (struct ofl_instruction_header const *i)
 
 struct state_table * state_table_create(void)
 {
+    int i;
     struct state_table *table = malloc(sizeof(struct state_table));
     memset(table, 0, sizeof(*table));
 
     table->state_entries = (struct hmap) HMAP_INITIALIZER(&table->state_entries);
 
     table->default_state_entry.state = STATE_DEFAULT;
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+        table->default_state_entry.flow_data_var[i] = 0;
+
     table->null_state_entry.state = STATE_NULL;
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+        table->null_state_entry.flow_data_var[i] = 0;
 
     table->last_lookup_state_entry = NULL;
     table->update_scope_is_eq_lookup_scope = false;
@@ -1662,6 +1894,7 @@ state_table_configure_stateful(struct state_table *table, uint8_t stateful)
         table->stateful = 1;
     else
         table->stateful = 0;
+    //TODO Davide: should we "destroy" conditions/extractor/etc?
 }
 
 void state_table_destroy(struct state_table *table)
@@ -1913,6 +2146,84 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
     return 0;
 }
 
+ofl_err state_table_set_condition(struct state_table *table, struct ofl_exp_set_condition *p) {
+    //TODO Davide: check if !=null and return error?! (i.e. check if this condition has been already configured in the past)
+    struct condition_table_entry* cte = (struct condition_table_entry*) malloc(sizeof(struct condition_table_entry)); 
+    cte->condition = p->condition;
+    cte->operand_1_type = (p->operand_types>>6)&3;
+    cte->operand_2_type = (p->operand_types>>4)&3;
+    //TODO Davide: check if condition is valid (e.g. if operand_1 is header field 2 => header field 2 must have been configured)
+    //NB Checking the validity does NOT mean checking if, for example, header field can be extracted (there is no packet here!)
+    cte->operand_1 = p->operand_1;
+    cte->operand_2 = p->operand_2;
+    table->condition_table[p->condition_id] = cte;
+    OFL_LOG_DBG(LOG_MODULE, "Condition %u configured",p->condition_id);
+
+    return 0;
+}
+
+ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p) {
+    //TODO Davide: should we update timeouts? Or we should update them only for set flow state??
+    //TODO Davide: merge with state_table_set_state()
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};   
+    struct state_entry *e;
+    uint64_t now;
+    struct timeval tv;
+    int i;
+    uint32_t key_len=0; //update-scope key extractor length
+    struct key_extractor *extractor=&table->write_key;
+    for (i=0; i<extractor->field_count; i++) 
+    {
+        uint32_t type = (int)extractor->fields[i];
+        key_len = key_len + OXM_LENGTH(type);
+    }
+    
+    if(key_len == p->key_len)
+    {
+        memcpy(key, p->key, p->key_len);
+    }
+    else
+    {
+        OFL_LOG_WARN(LOG_MODULE, "key extractor length != received key length");
+        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+    }
+
+
+
+    HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, 
+        hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
+                OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry found. Updating flow_data_var[%d]=%d",p->flow_data_variable_id,(e->flow_data_var[p->flow_data_variable_id] & ~(p->mask)) | (p->value & p->mask));
+                e->flow_data_var[p->flow_data_variable_id] = (e->flow_data_var[p->flow_data_variable_id] & ~(p->mask)) | (p->value & p->mask);
+                return 0;
+            }
+            return 0;
+    }
+
+   
+    gettimeofday(&tv,NULL);
+    now = 1000000 * tv.tv_sec + tv.tv_usec;
+    e = xmalloc(sizeof(struct state_entry));
+    e->created = now;
+    e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
+    e->stats->idle_timeout = 0;
+    e->stats->hard_timeout = 0;
+    e->stats->idle_rollback = 0;
+    e->stats->hard_rollback = 0;
+
+    memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
+    e->state = STATE_DEFAULT;
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+        e->flow_data_var[i]=0;
+    e->flow_data_var[p->flow_data_variable_id] = p->value & p->mask;
+
+    hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
+    OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry not found! A new state entry will be created with flow_data_var[%d]=%d",p->flow_data_variable_id,e->flow_data_var[p->flow_data_variable_id]);
+    
+    return 0;
+}
+
+/* State Sync:  */
 ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
                            struct ofl_exp_set_flow_state *msg, struct ofl_exp_action_set_state *act,
                            struct ofl_exp_msg_notify_state_change *ntf_message)
@@ -2176,7 +2487,54 @@ handle_state_mod(struct pipeline *pl, struct ofl_exp_msg_state_mod *msg,
         case OFPSC_EXP_RESET_GLOBAL_STATE:{
             pl->dp->global_state = OFP_GLOBAL_STATE_DEFAULT;
             break;}
-
+        case OFPSC_EXP_SET_HEADER_FIELD_EXTRACTOR:{
+            struct ofl_exp_set_header_field_extractor *p = (struct ofl_exp_set_header_field_extractor *) msg->payload;
+            struct state_table *st = pl->tables[p->table_id]->state_table;
+            if (state_table_is_enabled(st)){
+                return state_table_set_header_field_extractor(st, p);
+            }
+            else{
+                OFL_LOG_WARN(LOG_MODULE, "ERROR STATE MOD at stage %u: stage not stateful", p->table_id);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_EXTRACTOR);
+            }
+            
+            break;}
+        case OFPSC_EXP_SET_CONDITION:{
+            struct ofl_exp_set_condition *p = (struct ofl_exp_set_condition *) msg->payload;
+            struct state_table *st = pl->tables[p->table_id]->state_table;
+            if (state_table_is_enabled(st)){
+                return state_table_set_condition(st, p); 
+            }
+            else{
+                OFL_LOG_WARN(LOG_MODULE, "ERROR STATE MOD at stage %u: stage not stateful", p->table_id);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_CONDITION);
+            }
+            break;}
+        case OFPSC_EXP_SET_GLOBAL_DATA_VAR:{
+            struct ofl_exp_set_global_data_variable *p = (struct ofl_exp_set_global_data_variable *) msg->payload;
+            struct state_table *st = pl->tables[p->table_id]->state_table;
+            if (state_table_is_enabled(st)){
+                uint32_t global_data_var = st->global_data_var[p->global_data_variable_id];
+                global_data_var = (global_data_var & ~(p->mask)) | (p->value & p->mask);
+                st->global_data_var[p->global_data_variable_id] = global_data_var;
+                OFL_LOG_DBG(LOG_MODULE, "Global data variable %u configured to value %d",p->global_data_variable_id,st->global_data_var[p->global_data_variable_id]);
+            }
+            else{
+                OFL_LOG_WARN(LOG_MODULE, "ERROR STATE MOD at stage %u: stage not stateful", p->table_id);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_CONDITION);
+            }
+            break;}
+        case OFPSC_EXP_SET_FLOW_DATA_VAR:{
+            struct ofl_exp_set_flow_data_variable *p = (struct ofl_exp_set_flow_data_variable *) msg->payload;
+            struct state_table *st = pl->tables[p->table_id]->state_table;
+            if (state_table_is_enabled(st)){
+                return state_table_set_flow_data_variable(st, p);
+            }
+            else{
+                OFL_LOG_WARN(LOG_MODULE, "ERROR STATE MOD at stage %u: stage not stateful or not configured", p->table_id);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_EXP_SET_FLOW_STATE);
+            }
+            break;}
         default:
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_EXP_STATE_MOD_FAILED);
     }
@@ -3064,4 +3422,116 @@ void
 pkttmp_entry_destroy(struct pkttmp_entry *entry) {
     free(entry->data);
     free(entry);
+}
+
+bool retrieve_condition_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, uint8_t operand_num, struct state_table *state_table, struct packet *pkt){
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
+    struct state_entry * state_entry;
+    uint8_t field_len;
+
+    switch(operand_type){
+        case OPERAND_TYPE_FLOW_DATA_VAR:{
+            if (operand_id >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+                return false;
+            }
+            //TODO Davide: exploit state_table->last_lookup_state_entry
+            state_entry = state_table_lookup(state_table, pkt);
+            if(state_entry.state == STATE_NULL){
+                return false;
+            } else {
+                *operand_value = (uint32_t) state_entry->flow_data_var[operand_id];
+            }
+            break;}
+        case OPERAND_TYPE_GLOBAL_DATA_VAR:{
+            if (operand_id >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+                return false;
+            }
+            *operand_value = (uint32_t) state_table->global_data_var[operand_id];
+            break;}
+        case OPERAND_TYPE_HEADER_FIELD:{
+            if (operand_id >= OFPSC_MAX_HEADER_FIELDS){
+                return false;
+            }
+            if (state_table->header_field_extractor[operand_id].field_count!=1){
+                return false;
+            }
+
+            if(!__extract_key(key, &state_table->header_field_extractor[operand_id], pkt))
+            {
+                OFL_LOG_DBG(LOG_MODULE, "Header field %"PRIu32" not found in the packet's header -> -1",state_table->header_field_extractor[operand_id].fields[0]);
+                return false;
+            }
+
+            field_len = OXM_LENGTH(state_table->header_field_extractor[operand_id].fields[0]);
+            if (OXM_VENDOR(state_table->header_field_extractor[operand_id].fields[0])==0xffff){
+                field_len -= EXP_ID_LEN;
+            }
+            switch (field_len){
+                case 4:{
+                    *operand_value = (uint32_t) *((uint32_t*) key);
+                    break;
+                }
+                case 2:{
+                    *operand_value = (uint32_t) (*((uint16_t*) key));
+                    break;
+                }
+                case 1:{
+                    *operand_value = (uint32_t)  *((uint8_t*) key);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    OFL_LOG_DBG(LOG_MODULE, "operand_%u_value=%"PRIu32"",operand_num,*operand_value);
+    return true;
+}
+
+int state_table_evaluate_condition(struct state_table *state_table,struct packet *pkt,struct condition_table_entry* condition_table_entry) {
+    //Comparison is made by converting fields value to integers. Header field extractors always refer to field of length <=32 bit
+    uint32_t operand_1_value = 0;
+    uint32_t operand_2_value = 0;
+
+    if (!retrieve_condition_operand(&operand_1_value, condition_table_entry->operand_1_type, condition_table_entry->operand_1, 1, state_table, pkt))
+        return -1;
+
+    if (!retrieve_condition_operand(&operand_2_value, condition_table_entry->operand_2_type, condition_table_entry->operand_2, 2, state_table, pkt))
+        return -1;
+
+    switch(condition_table_entry->condition){
+        case CONDITION_GT:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_GT");
+            return operand_1_value>operand_2_value;}
+        case CONDITION_LT:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_LT");
+            return operand_1_value<operand_2_value;}
+        case CONDITION_GTE:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_GTE");
+            return operand_1_value>=operand_2_value;}
+        case CONDITION_LTE:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_LTE");
+            return operand_1_value<=operand_2_value;}
+        case CONDITION_EQ:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_EQ");
+            return operand_1_value=operand_2_value;}
+        case CONDITION_NEQ:{
+            OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_NEQ");
+            return operand_1_value!=operand_2_value;}
+        default:{
+            return -1;}
+    }
+
+    return -1;
+}
+
+ofl_err state_table_set_header_field_extractor(struct state_table *table, struct ofl_exp_set_header_field_extractor *hfe) {
+    struct key_extractor *dest;
+
+    dest = &table->header_field_extractor[hfe->extractor_id];
+    dest->field_count = 1;
+    dest->fields[0] = hfe->field;
+    dest->key_len = OXM_LENGTH(hfe->field);
+    OFL_LOG_DBG(LOG_MODULE, "Header field extractor %u configured", hfe->extractor_id);
+
+    return 0;
 }
