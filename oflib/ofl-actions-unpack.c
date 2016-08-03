@@ -320,7 +320,8 @@ ofl_actions_unpack(struct ofp_action_header const *src, size_t *len, struct ofl_
                                     || da->field->header == OXM_EXP_CONDITION6
                                     || da->field->header == OXM_EXP_CONDITION7
                                     || da->field->header == OXM_EXP_TIMESTAMP
-                                    || da->field->header == OXM_EXP_RANDOM){
+                                    || da->field->header == OXM_EXP_RANDOM
+                                    || da->field->header == OXM_EXP_PKT_LEN){
 				
                 error = ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_SET_TYPE);
                 break;

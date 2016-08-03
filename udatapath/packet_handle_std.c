@@ -518,6 +518,9 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     /* Add in_port value to the hash_map */
     ofl_structs_match_put32(&handle->match, OXM_OF_IN_PORT, handle->pkt->in_port);
 
+    /* Add pkt_len value to the hash_map */
+    ofl_structs_match_exp_put16(&handle->match, OXM_EXP_PKT_LEN, 0xBEBABEBA, handle->pkt->buffer->size);
+
     /* Add global register value to the hash_map */
     ofl_structs_match_exp_put32(&handle->match, OXM_EXP_GLOBAL_STATE, 0xBEBABEBA, current_global_state);
 

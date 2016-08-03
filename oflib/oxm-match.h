@@ -231,18 +231,19 @@
 #define EXP_ID_LEN 4
 #define OXM_EXP_GLOBAL_STATE OXM_HEADER     (0xFFFF, 0, 8)
 #define OXM_EXP_GLOBAL_STATE_W OXM_HEADER_W (0xFFFF, 0, 6)  /*(experimenter_id + global_state + mask)/2*/
-#define OXM_EXP_STATE OXM_HEADER     (0xFFFF, 1, 8)
-#define OXM_EXP_STATE_W OXM_HEADER_W (0xFFFF, 1, 6)
-#define OXM_EXP_CONDITION0 OXM_HEADER     (0xFFFF, 2, 5)
-#define OXM_EXP_CONDITION1 OXM_HEADER     (0xFFFF, 3, 5)
-#define OXM_EXP_CONDITION2 OXM_HEADER     (0xFFFF, 4, 5)
-#define OXM_EXP_CONDITION3 OXM_HEADER     (0xFFFF, 5, 5)
-#define OXM_EXP_CONDITION4 OXM_HEADER     (0xFFFF, 6, 5)
-#define OXM_EXP_CONDITION5 OXM_HEADER     (0xFFFF, 7, 5)
-#define OXM_EXP_CONDITION6 OXM_HEADER     (0xFFFF, 8, 5)
-#define OXM_EXP_CONDITION7 OXM_HEADER     (0xFFFF, 9, 5)
-#define OXM_EXP_TIMESTAMP OXM_HEADER      (0xFFFF, 10, 8)
-#define OXM_EXP_RANDOM OXM_HEADER         (0xFFFF, 11, 6)
+#define OXM_EXP_STATE OXM_HEADER            (0xFFFF, 1, 8)
+#define OXM_EXP_STATE_W OXM_HEADER_W        (0xFFFF, 1, 6)
+#define OXM_EXP_CONDITION0 OXM_HEADER       (0xFFFF, 2, 5)
+#define OXM_EXP_CONDITION1 OXM_HEADER       (0xFFFF, 3, 5)
+#define OXM_EXP_CONDITION2 OXM_HEADER       (0xFFFF, 4, 5)
+#define OXM_EXP_CONDITION3 OXM_HEADER       (0xFFFF, 5, 5)
+#define OXM_EXP_CONDITION4 OXM_HEADER       (0xFFFF, 6, 5)
+#define OXM_EXP_CONDITION5 OXM_HEADER       (0xFFFF, 7, 5)
+#define OXM_EXP_CONDITION6 OXM_HEADER       (0xFFFF, 8, 5)
+#define OXM_EXP_CONDITION7 OXM_HEADER       (0xFFFF, 9, 5)
+#define OXM_EXP_TIMESTAMP OXM_HEADER        (0xFFFF, 10, 8)
+#define OXM_EXP_RANDOM OXM_HEADER           (0xFFFF, 11, 6)
+#define OXM_EXP_PKT_LEN OXM_HEADER          (0xFFFF, 12, 6)
 
 /* ## ------------------------------- ## */
 /* ## IPv6 compatible fields. ## */
@@ -304,7 +305,7 @@ enum oxm_field_index {
 #define DEFINE_FIELD(HEADER,DL_TYPES, NW_PROTO, MASKABLE) \
         OFI_OXM_##HEADER,
 #include "oxm-match.def"
-    NUM_OXM_FIELDS = 70
+    NUM_OXM_FIELDS = 71
 };
 
 struct oxm_field {
