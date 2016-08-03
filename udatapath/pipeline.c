@@ -218,6 +218,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             free(m);
         }
 
+
         entry = flow_table_lookup(table, pkt, pkt->dp->exp);
 
         if (entry != NULL) {
