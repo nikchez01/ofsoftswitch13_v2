@@ -10,9 +10,6 @@
 #include "../include/openflow/beba-ext.h"
 
 
-#define MAX_EXTRACTION_FIELD_COUNT 6
-#define MAX_STATE_KEY_LEN 48
-
 #define STATE_DEFAULT 0
 #define STATE_NULL UINT32_MAX
 /**************************************************************************/
@@ -138,6 +135,7 @@ struct ofl_exp_state_entry{
     uint32_t            key_len;
     uint8_t             key[OFPSC_MAX_KEY_LEN];
     uint32_t            state;
+    uint32_t            flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM];
 };
 
 struct ofl_exp_state_stats {

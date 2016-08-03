@@ -71,7 +71,6 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                 if (state_table_is_enabled(st))
                 {
                     VLOG_DBG_RL(LOG_MODULE, &rl, "executing action NEXT STATE at stage %u", wns->table_id);
-
                     // State Sync: Get the new state, encoded in ntf_message, and pack a message to be sent via dp_send_message.
                     // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
                     state_table_set_state(st, pkt, NULL, wns, &ntf_message);

@@ -213,7 +213,7 @@ struct ofp_exp_msg_state_ntf {
     uint32_t new_state;
     uint32_t state_mask;
     uint32_t key_len;
-    uint8_t  key[OFPSC_MAX_KEY_LEN];
+    uint8_t  key[OFPSC_MAX_KEY_LEN];  //TODO Davide: use flexible arrays to save space
 };
 
 /*
@@ -239,7 +239,7 @@ struct ofp_exp_set_extractor {
     uint8_t bit;
     uint8_t pad2[3];
     uint32_t field_count;
-    uint32_t fields[OFPSC_MAX_FIELD_COUNT];
+    uint32_t fields[OFPSC_MAX_FIELD_COUNT];  //TODO Davide: use flexible arrays to save space
 };
 
 struct ofp_exp_set_flow_state {
@@ -252,14 +252,14 @@ struct ofp_exp_set_flow_state {
     uint32_t idle_rollback;
     uint32_t hard_timeout;
     uint32_t idle_timeout;
-    uint8_t key[OFPSC_MAX_KEY_LEN];
+    uint8_t key[OFPSC_MAX_KEY_LEN];  //TODO Davide: use flexible arrays to save space
 };
 
 struct ofp_exp_del_flow_state {
     uint8_t table_id;
     uint8_t pad[3];
     uint32_t key_len;
-    uint8_t key[OFPSC_MAX_KEY_LEN];
+    uint8_t key[OFPSC_MAX_KEY_LEN];  //TODO Davide: use flexible arrays to save space
 };
 
 struct ofp_exp_set_global_state {
@@ -299,7 +299,7 @@ struct ofp_exp_set_flow_data_variable {
     uint32_t key_len;
     uint32_t value;
     uint32_t mask;
-    uint8_t key[OFPSC_MAX_KEY_LEN];
+    uint8_t key[OFPSC_MAX_KEY_LEN];  //TODO Davide: use flexible arrays to save space
 };
 
 enum ofp_exp_operand_types {
@@ -394,8 +394,9 @@ struct ofp_exp_state_entry{
     uint32_t            key_len;
     uint8_t             key[OFPSC_MAX_KEY_LEN];
     uint32_t            state;
+    uint32_t            flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM]; //TODO Davide: use flexible arrays to save space
 };
-OFP_ASSERT(sizeof(struct ofp_exp_state_entry) == 56);
+OFP_ASSERT(sizeof(struct ofp_exp_state_entry) == 80);
 
 /* Body for ofp_multipart_request of type OFPMP_EXP_STATE_STATS. */
 struct ofp_exp_state_stats_request {
@@ -422,14 +423,14 @@ struct ofp_exp_state_stats {
     uint32_t duration_sec;  /* Time state entry has been alive in secs. */
     uint32_t duration_nsec; /* Time state entry has been alive in nsecs beyond duration_sec. */
     uint32_t field_count;    /*number of extractor fields*/
-    uint32_t fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/ 
+    uint32_t fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/  //TODO Davide: use flexible arrays to save space
     struct ofp_exp_state_entry entry;
     uint32_t hard_rollback;
     uint32_t idle_rollback;
     uint32_t hard_timeout; // [us]
     uint32_t idle_timeout; // [us]
 };
-OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 112);
+OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 136);
 
 /****************************************************************
  *

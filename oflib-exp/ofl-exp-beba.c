@@ -1137,7 +1137,7 @@ ofl_exp_beba_act_to_string(struct ofl_action_header const *act)
         {
             struct ofl_exp_action_set_state *a = (struct ofl_exp_action_set_state *)ext;
             char *string = malloc(200);
-            sprintf(string, "{set_state=[state=\"%u\",state_mask=\"%"PRIu32"\",table_id=\"%u\",idle_to=\"%u\",hard_to=\"%u\",idle_rb=\"%u\",hard_rb=\"%u\",bit=\"%u\"]}", a->state, a->state_mask, a->table_id,a->idle_timeout,a->hard_timeout,a->idle_rollback,a->hard_rollback,a->bit);
+            sprintf(string, "{set_state=[state=\"%"PRIu32"\",state_mask=\"%"PRIu32"\",table_id=\"%u\",idle_to=\"%u\",hard_to=\"%u\",idle_rb=\"%u\",hard_rb=\"%u\",bit=\"%u\"]}", a->state, a->state_mask, a->table_id,a->idle_timeout,a->hard_timeout,a->idle_rollback,a->hard_rollback,a->bit);
             //TODO Davide: print parametric key fields (if any)
             return string;
         }
@@ -2180,49 +2180,50 @@ ofl_error_beba_exp_type_print(FILE *stream, uint16_t exp_type) {
 
 /*experimenter table functions*/
 
-    struct state_table *state_table_create(void) {
-        int i;
-        struct state_table *table = malloc(sizeof(struct state_table));
-        memset(table, 0, sizeof(*table));
+struct state_table *state_table_create(void) {
+    int i;
+    struct state_table *table = malloc(sizeof(struct state_table));
+    memset(table, 0, sizeof(*table));
 
-        table->state_entries = (struct hmap) HMAP_INITIALIZER(&table->state_entries);
+    table->state_entries = (struct hmap) HMAP_INITIALIZER(&table->state_entries);
 
-        table->default_state_entry.state = STATE_DEFAULT;
-        for (i = 0; i < OFPSC_MAX_FLOW_DATA_VAR_NUM; i++)
-            table->default_state_entry.flow_data_var[i] = 0;
+    table->default_state_entry.state = STATE_DEFAULT;
+    for (i = 0; i < OFPSC_MAX_FLOW_DATA_VAR_NUM; i++)
+        table->default_state_entry.flow_data_var[i] = 0;
 
-        table->null_state_entry.state = STATE_NULL;
-        for (i = 0; i < OFPSC_MAX_FLOW_DATA_VAR_NUM; i++)
-            table->null_state_entry.flow_data_var[i] = 0;
+    table->null_state_entry.state = STATE_NULL;
+    for (i = 0; i < OFPSC_MAX_FLOW_DATA_VAR_NUM; i++)
+        table->null_state_entry.flow_data_var[i] = 0;
 
-        table->last_lookup_state_entry = NULL;
-        table->update_scope_is_eq_lookup_scope = false;
-        table->bit_update_scope_is_eq_lookup_scope = false;
+    table->last_lookup_state_entry = NULL;
+    table->update_scope_is_eq_lookup_scope = false;
+    table->bit_update_scope_is_eq_lookup_scope = false;
 
+    table->stateful = 0;
+
+    return table;
+}
+
+bool state_table_is_enabled(struct state_table *table) {
+    return table->stateful
+           && table->lookup_key_extractor.field_count != 0
+           && table->update_key_extractor.field_count != 0;
+}
+
+static void
+state_table_configure_stateful(struct state_table *table, uint8_t stateful) {
+    if (stateful != 0)
+        table->stateful = 1;
+    else
         table->stateful = 0;
+    //TODO Davide: should we "destroy" conditions/extractor/etc?
+}
 
-        return table;
-    }
+void state_table_destroy(struct state_table *table) {
+    hmap_destroy(&table->state_entries);
+    free(table);
+}
 
-    bool state_table_is_enabled(struct state_table *table) {
-        return table->stateful
-               && table->lookup_key_extractor.field_count != 0
-               && table->update_key_extractor.field_count != 0;
-    }
-
-    static void
-    state_table_configure_stateful(struct state_table *table, uint8_t stateful) {
-        if (stateful != 0)
-            table->stateful = 1;
-        else
-            table->stateful = 0;
-        //TODO Davide: should we "destroy" conditions/extractor/etc?
-    }
-
-    void state_table_destroy(struct state_table *table) {
-        hmap_destroy(&table->state_entries);
-        free(table);
-    }
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt) {
     int i;
@@ -2232,12 +2233,17 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
     for (i = 0; i < extractor->field_count; i++) {
         uint32_t type = (int) extractor->fields[i];
         HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                                hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
-            if (type == f->header) {
-                memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
-                extracted_key_len += OXM_LENGTH(f->header);
-                break;
-            }
+            hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
+                if (type == f->header) {
+                    if (OXM_VENDOR(f->header)==0xFFFF){
+                        memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+                    }
+                    else {
+                        memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+                    }
+                    extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
+                    break;
+                }
         }
     }
     /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
@@ -2413,7 +2419,8 @@ struct state_entry * state_table_lookup_from_scope(struct state_table* table, st
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
         hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
             if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
-                OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u",e->state);
+                //TODO Davide: generalize for OFPSC_MAX_FLOW_DATA_VAR_NUM
+                OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u | %u %u %u %u",e->state,e->flow_data_var[0],e->flow_data_var[1],e->flow_data_var[2],e->flow_data_var[3]);
 
                 now = 1000000 * pkt->ts.tv_sec + pkt->ts.tv_usec;
 
@@ -2457,9 +2464,11 @@ ofl_err state_table_del_state(struct state_table *table, uint8_t *key, uint32_t 
     }
 
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
-        hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
-            if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
+        hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
                 hmap_remove_and_shrink(&table->state_entries, &e->hmap_node);
+                free(e->stats);
+                free(e);
                 found = 1;
                 break;
             }
@@ -2469,7 +2478,6 @@ ofl_err state_table_del_state(struct state_table *table, uint8_t *key, uint32_t 
         return ofl_error(OFPET_EXPERIMENTER, OFPEC_EXP_DEL_FLOW_STATE);
     }
 
-    //TODO Davide: free(e)
     return 0;
 }
 
@@ -2621,6 +2629,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
         || ( (act->opcode==OPCODE_POLY_SUM) && (((act->operand_types>>8)&3)==OPERAND_TYPE_FLOW_DATA_VAR)) ) {
 
         //TODO Davide: exploit state_table->last_lookup_state_entry (needs state_table_set_flow_data_variable() refactoring)
+        //TODO Davide: re-add hardcoded update scope
         if(!__extract_key(key, extractor, pkt)){
             OFL_LOG_DBG(LOG_MODULE, "update key fields not found in the packet's header");
             return;
@@ -2934,18 +2943,16 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
     gettimeofday(&tv,NULL);
     now = 1000000 * tv.tv_sec + tv.tv_usec;
     e = xmalloc(sizeof(struct state_entry));
+    memset(e,0,sizeof(struct state_entry));
     e->created = now;
     e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
-    e->stats->idle_timeout = 0;
-    e->stats->hard_timeout = 0;
-    e->stats->idle_rollback = 0;
-    e->stats->hard_rollback = 0;
-
+    memset(e->stats,0,sizeof(struct ofl_exp_state_stats));
     memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
     e->state = STATE_DEFAULT;
     for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
         e->flow_data_var[i]=0;
     e->flow_data_var[msg->flow_data_variable_id] = msg->value & msg->mask;
+
 
     hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
     OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry not found! A new state entry will be created with flow_data_var[%d]=%d",msg->flow_data_variable_id,e->flow_data_var[msg->flow_data_variable_id]);
@@ -2958,7 +2965,7 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
                            struct ofl_exp_set_flow_state *msg, struct ofl_exp_action_set_state *act,
                            struct ofl_exp_msg_notify_state_change *ntf_message)
 {
-    uint8_t key[MAX_STATE_KEY_LEN] = {0};
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *e;
     uint32_t state, state_mask,
             idle_rollback, hard_rollback,
@@ -2984,6 +2991,8 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
         hard_rollback = act->hard_rollback;
         idle_timeout = act->idle_timeout;
         hard_timeout = act->hard_timeout;
+
+        //TODO Davide: re-add hardcoded update scope
 
         // Bi-flow handling.
         // FIXME: rename 'bit' to something more meaningful.
@@ -3352,8 +3361,8 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
     uint8_t len = 0;
     uint8_t aux = 0;
 
-    uint8_t offset[MAX_EXTRACTION_FIELD_COUNT] = {0};
-    uint8_t length[MAX_EXTRACTION_FIELD_COUNT] = {0};
+    uint8_t offset[OFPSC_MAX_FIELD_COUNT] = {0};
+    uint8_t length[OFPSC_MAX_FIELD_COUNT] = {0};
 
 
     for (i=0; i<extractor->field_count; i++) {
@@ -3422,6 +3431,8 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             (*stats)[(*stats_num)]->entry.key_len = key_len;
             for (i=0;i<key_len;i++)
                 (*stats)[(*stats_num)]->entry.key[i]=entry->key[i];
+            for (i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+                    (*stats)[(*stats_num)]->entry.flow_data_var[i]=entry->flow_data_var[i];
             (*stats_num)++;
 
             if (delete_entries){
@@ -3442,12 +3453,20 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             (*stats)[(*stats_num)]->fields[i]=fields[i];
         (*stats)[(*stats_num)]->table_id = table_id;
         (*stats)[(*stats_num)]->field_count = extractor->field_count;
-        (*stats)[(*stats_num)]->entry.key_len = 0;
-        (*stats)[(*stats_num)]->entry.state = STATE_DEFAULT;
+        //TODO Davide: memset(0)
+        (*stats)[(*stats_num)]->duration_sec = 0;
+        (*stats)[(*stats_num)]->duration_nsec = 0;
         (*stats)[(*stats_num)]->idle_timeout = 0;
         (*stats)[(*stats_num)]->hard_timeout = 0;
         (*stats)[(*stats_num)]->idle_rollback = 0;
         (*stats)[(*stats_num)]->hard_rollback = 0;
+        (*stats)[(*stats_num)]->entry.key_len = 0;
+        for (i=0;i<OFPSC_MAX_KEY_LEN;i++)
+                    (*stats)[(*stats_num)]->entry.key[i]=0;
+        (*stats)[(*stats_num)]->entry.state = STATE_DEFAULT;
+        for (i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+            (*stats)[(*stats_num)]->entry.flow_data_var[i]=0;
+
         (*stats_num)++;
     }
 }
@@ -3481,13 +3500,21 @@ ofl_structs_state_stats_pack(struct ofl_exp_state_stats const *src, uint8_t *dst
     state_stats->duration_nsec = htonl(src->duration_nsec);
 
     state_stats->pad = 0;
-    state_stats->field_count = htonl(src->field_count);
 
+    state_stats->field_count = htonl(src->field_count);
+    memset(state_stats->fields,0x00,sizeof(uint32_t)*OFPSC_MAX_FIELD_COUNT);
     for (i=0;i<src->field_count;i++)
            state_stats->fields[i]=htonl(src->fields[i]);
+
     state_stats->entry.key_len = htonl(src->entry.key_len);
+    memset(state_stats->entry.key,0x00,sizeof(uint8_t)*OFPSC_MAX_KEY_LEN);
     for (i=0;i<src->entry.key_len;i++)
            state_stats->entry.key[i]=src->entry.key[i];
+
+    memset(state_stats->entry.flow_data_var,0x00,sizeof(uint32_t)*OFPSC_MAX_FLOW_DATA_VAR_NUM);
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+        state_stats->entry.flow_data_var[i] = htonl(src->entry.flow_data_var[i]);
+
     state_stats->entry.state = htonl(src->entry.state);
     state_stats->idle_timeout = htonl(src->idle_timeout);
     state_stats->idle_rollback = htonl(src->idle_rollback);
@@ -3783,7 +3810,7 @@ ofl_structs_state_entry_print_default(FILE *stream, uint32_t field)
 void
 ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struct ofl_exp const *exp UNUSED)
 {
-    size_t i;
+    int i;
     uint8_t offset=0;
     if(ofl_colored_output())
     {
@@ -3802,6 +3829,9 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
         }
         fprintf(stream, "}, \x1B[31mstate\x1B[0m=\"");
         fprintf(stream, "%"PRIu32"\"", s->entry.state);
+        for (i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++){
+            fprintf(stream, ",flow_data_var_%d=\"%"PRIu32"\"", i, s->entry.flow_data_var[i]);
+        }
         if(s->entry.key_len!=0)
             fprintf(stream, ", dur_s=\"%u\", dur_ns=\"%09u\", idle_to=\"%u\", idle_rb=\"%u\", hard_to=\"%u\", hard_rb=\"%u\"",s->duration_sec, s->duration_nsec, s->idle_timeout, s->idle_rollback, s->hard_timeout, s->hard_rollback);
     }
@@ -3823,6 +3853,9 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
         }
         fprintf(stream, "}, state=\"");
         fprintf(stream, "%"PRIu32"\"", s->entry.state);
+        for (i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++){
+            fprintf(stream, ",flow_data_var_%d=\"%"PRIu32"\"", i, s->entry.flow_data_var[i]);
+        }
         if(s->entry.key_len!=0)
             fprintf(stream, ", dur_s=\"%u\", dur_ns=\"%09u\", idle_to=\"%u\", idle_rb=\"%u\", hard_to=\"%u\", hard_rb=\"%u\"",s->duration_sec, s->duration_nsec, s->idle_timeout, s->idle_rollback, s->hard_timeout, s->hard_rollback);
     }
@@ -3869,6 +3902,8 @@ ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t co
     for (i=0;i<s->entry.key_len;i++)
                s->entry.key[i]=src->entry.key[i];
     s->entry.state = ntohl(src->entry.state);
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+        s->entry.flow_data_var[i] = ntohl(src->entry.flow_data_var[i]);
 
     s->idle_timeout = ntohl(src->idle_timeout);
     s->idle_rollback = ntohl(src->idle_rollback);
