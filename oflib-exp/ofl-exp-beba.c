@@ -1715,6 +1715,10 @@ ofl_exp_beba_field_unpack(struct ofl_match *match, struct oxm_field const *f, vo
                                         ntohl(*((uint32_t *) value)));
             return 0;
         }
+        case OFI_OXM_EXP_RANDOM:{
+            ofl_structs_match_exp_put16(match, f->header, ntohl(*((uint32_t*) experimenter_id)), ntohs(*((uint16_t*) value)));
+            return 0;
+        }
         default:
             NOT_REACHED();
     }

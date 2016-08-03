@@ -440,18 +440,20 @@ void
 packet_handle_std_validate(struct packet_handle_std *handle) {
     struct ofl_match_tlv * iter, *next, *f;
     struct timeval tv;
-    gettimeofday(&tv,NULL);
     uint64_t metadata = 0;
     uint64_t tunnel_id = 0;
     uint32_t state = 0;
     uint8_t condition[OFPSC_MAX_CONDITIONS_NUM] = { 0 };
-    uint32_t timestamp = (1000000 * tv.tv_sec + tv.tv_usec)/1000; // timestamp in ms
+    uint32_t timestamp;
+    uint16_t random = 0;    //TODO Davide: pick a random number (see udatapath/group_entry.c)
     bool has_state = false;
     bool has_condition[OFPSC_MAX_CONDITIONS_NUM] = { false };
     int i = 0;
     uint32_t current_global_state = OFP_GLOBAL_STATE_DEFAULT;
     //TODO Davide: try to avoid re-generation at each call
     uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
+    gettimeofday(&tv,NULL);
+    timestamp = (1000000 * tv.tv_sec + tv.tv_usec)/1000; // timestamp in ms
 
     if(handle->valid)
         return;
@@ -487,6 +489,12 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
         hmap_node, hash_int(OXM_EXP_TIMESTAMP,0), &handle->match.match_fields){
         timestamp = *((uint32_t*) (f->value + EXP_ID_LEN));
+    }
+
+    //Remove this to choose a random value at each validation
+    HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                    hmap_node, hash_int(OXM_EXP_RANDOM,0), &handle->match.match_fields){
+                    random = *((uint16_t*) (f->value + EXP_ID_LEN));
     }
 
     if (handle->match.dirty)
@@ -526,6 +534,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 
     /* Add timestamp and random value to the hash_map */
     ofl_structs_match_exp_put32(&handle->match, OXM_EXP_TIMESTAMP, 0xBEBABEBA, timestamp);
+    ofl_structs_match_exp_put16(&handle->match, OXM_EXP_RANDOM, 0xBEBABEBA, random);
 
     /*Add metadata  and tunnel_id value to the hash_map */
     ofl_structs_match_put64(&handle->match,  OXM_OF_METADATA, metadata);
