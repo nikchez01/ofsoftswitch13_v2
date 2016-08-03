@@ -499,7 +499,9 @@ ofl_structs_oxm_tlv_print(FILE *stream, struct ofl_match_tlv *f)
 		 		case OFPXMT_EXP_CONDITION7:
 		        	fprintf(stream, "condition7=\"%d\"", *((uint8_t*)(f->value + EXP_ID_LEN)));
 		 			break;
-	
+		 		case OFPXMT_EXP_TIMESTAMP:
+		        	fprintf(stream, "timestamp=\"%"PRIu32"\"", *((uint32_t*)(f->value + EXP_ID_LEN)));
+		 			break;
 				default:
 					fprintf(stream, "unknown type %d", field);
 			}

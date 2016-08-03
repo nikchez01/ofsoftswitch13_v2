@@ -575,6 +575,7 @@ parse_oxm_entry(struct ofl_match *match, const struct oxm_field *f, const void *
     case OFI_OXM_EXP_CONDITION5:
     case OFI_OXM_EXP_CONDITION6:
     case OFI_OXM_EXP_CONDITION7:
+    case OFI_OXM_EXP_TIMESTAMP:
     case NUM_OXM_FIELDS:
         NOT_REACHED();
     }
