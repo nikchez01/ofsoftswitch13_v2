@@ -2707,12 +2707,15 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_AVG");
             // avg( [count] , [value_to_be_averaged] , [avg_value]) = (IO1 , IN1 , IO2) has 3 inputs and 2 outputs
             // output1 = count
-            // output2 = avg(in1);
+            // output2 = avg(in1)*1000
 
             // [count] = [count] + 1
             // [avg_value] = ( [avg_value]*[count] + [value_to_be_averaged] ) / ( [count] + 1 )
 
             result1 = output_value + 1;
+            // It should be
+            // result2 = ( (operand_2_value*output_value) + operand_1_value ) / (output_value + 1);
+            // but we'd like 3 decimal places
             result2 = ( (operand_2_value*output_value) + operand_1_value*MULTIPLY_FACTOR ) / (output_value + 1);
 
             break;}
@@ -2720,8 +2723,8 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_VAR");
             // var( [count] , [value_to_be_varianced] , [avg_value] , [var_value]) = (IO1 , IN1 , IO2, IO3) has 4 inputs and 3 outputs
             // output1 = count
-            // output2 = avg(in1)
-            // output3 = var(in1);
+            // output2 = avg(in1)*1000
+            // output3 = var(in1)
 
             // [count] = [count] + 1
             // [avg_value] = ( [avg_value]*[count] + [value_to_be_averaged] ) / ( [count] + 1 )
@@ -2734,11 +2737,16 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             */
 
             result1 = output_value + 1;
+            // It should be
+            // result2 = ( (operand_2_value*output_value) + operand_1_value ) / (output_value + 1);
+            // but we'd like 3 decimal places
             result2 = ( (operand_2_value*output_value) + operand_1_value*MULTIPLY_FACTOR ) / (output_value + 1);
             if (output_value==0)
                 result3 = 0;
-            else
-                result3 = ( (operand_3_value*output_value) + (operand_1_value*MULTIPLY_FACTOR-operand_2_value)*(operand_1_value*MULTIPLY_FACTOR-result2) ) / (output_value + 1);
+            else {
+                // As result2 is avg_value*1000, operand_2 and resultt2 needto be divided by 1000
+                result3 = (( (operand_3_value*output_value) + (operand_1_value-operand_2_value/MULTIPLY_FACTOR)*(operand_1_value-result2/MULTIPLY_FACTOR) ) / (output_value + 1));
+            }
 
             break;}
         case OPCODE_EWMA:{
