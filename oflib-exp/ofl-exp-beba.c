@@ -244,6 +244,7 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
 
 ofl_err
 ofl_structs_set_condition_unpack(struct ofp_exp_set_condition const *src, size_t *len, struct ofl_exp_set_condition *dst) {
+    ofl_err error;
 
     if(*len == sizeof(struct ofp_exp_set_condition)) {
         if (src->table_id >= PIPELINE_TABLES) {
@@ -262,53 +263,16 @@ ofl_structs_set_condition_unpack(struct ofp_exp_set_condition const *src, size_t
         }
 
         // operand_types=xxyy0000 where xx=operand_1_type and yy=operand_2_type
-        switch((src->operand_types>>6)&3){
-            case OPERAND_TYPE_FLOW_DATA_VAR:
-                if (src->operand_1 >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid flow data variable id (operand_1) (%u).", src->operand_1 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
-                }
-                break;
-            case OPERAND_TYPE_GLOBAL_DATA_VAR:
-                if (src->operand_1 >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid global data variable id (operand_1) (%u).", src->operand_1 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
-                }
-                break;
-            case OPERAND_TYPE_HEADER_FIELD:
-                if (src->operand_1 >= OFPSC_MAX_HEADER_FIELDS) {
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (operand_1) (%u).", src->operand_1 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
-                }
-                break;
-            default:
-                OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid operand 1 type (%u).", (src->operand_types>>6)&3);
-                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
-            }  
-        
-        switch((src->operand_types>>4)&3){
-            case OPERAND_TYPE_FLOW_DATA_VAR:
-                if (src->operand_2 >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid flow data variable id (operand_2) (%u).", src->operand_2 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
-                }
-                break;
-            case OPERAND_TYPE_GLOBAL_DATA_VAR:
-                if (src->operand_2 >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid global data variable id (operand_2) (%u).", src->operand_2 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
-                }
-                break;
-            case OPERAND_TYPE_HEADER_FIELD:
-                if (src->operand_2 >= OFPSC_MAX_HEADER_FIELDS) {
-                    OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (operand_2) (%u).", src->operand_2 );
-                    return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
-                }
-                break;
-            default:
-                OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid operand 2 type (%u).", (src->operand_types>>4)&3);
-                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_OPERAND_TYPE);
-            } 
+
+        // operand_1 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
+        error = check_operands((src->operand_types>>6)&3,src->operand_1,"operand_1",false,true);
+        if (error)
+            return error;
+
+        // operand_2 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
+        error = check_operands((src->operand_types>>4)&3,src->operand_2,"operand_21",false,true);
+        if (error)
+            return error;
 
         dst->table_id = src->table_id;
         dst->condition_id = src->condition_id;
@@ -1902,62 +1866,30 @@ ofl_exp_beba_error_to_string(struct ofl_msg_exp_error const *msg) {
 void
 ofl_error_beba_exp_type_print(FILE *stream, uint16_t exp_type) {
     switch (exp_type) {
-        case (OFPEC_EXP_STATE_MOD_FAILED): {
-            fprintf(stream, "OFPEC_EXP_STATE_MOD_FAILED");
-            return;
-        }
-        case (OFPEC_EXP_STATE_MOD_BAD_COMMAND): {
-            fprintf(stream, "OFPEC_EXP_STATE_MOD_BAD_COMMAND");
-            return;
-        }
-        case (OFPEC_EXP_SET_EXTRACTOR): {
-            fprintf(stream, "OFPEC_EXP_SET_EXTRACTOR");
-            return;
-        }
-        case (OFPEC_EXP_SET_FLOW_STATE): {
-            fprintf(stream, "OFPEC_EXP_SET_FLOW_STATE");
-            return;
-        }
-        case (OFPEC_EXP_DEL_FLOW_STATE): {
-            fprintf(stream, "OFPEC_EXP_DEL_FLOW_STATE");
-            return;
-        }
-        case (OFPEC_BAD_EXP_MESSAGE): {
-            fprintf(stream, "OFPEC_BAD_EXP_MESSAGE");
-            return;
-        }
-        case (OFPEC_BAD_EXP_ACTION): {
-            fprintf(stream, "OFPEC_BAD_EXP_ACTION");
-            return;
-        }
-        case (OFPEC_BAD_EXP_LEN): {
-            fprintf(stream, "OFPEC_BAD_EXP_LEN");
-            return;
-        }
-        case (OFPEC_BAD_TABLE_ID): {
-            fprintf(stream, "OFPEC_BAD_TABLE_ID");
-            return;
-        }
-        case (OFPEC_BAD_MATCH_WILDCARD): {
-            fprintf(stream, "OFPEC_BAD_MATCH_WILDCARD");
-            return;
-        }
-        case (OFPET_BAD_EXP_INSTRUCTION): {
-            fprintf(stream, "OFPET_BAD_EXP_INSTRUCTION");
-            return;
-        }
-        case (OFPEC_EXP_PKTTMP_MOD_FAILED): {
-            fprintf(stream, "OFPEC_EXP_PKTTMP_MOD_FAILED");
-            return;
-        }
-        case (OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND): {
-            fprintf(stream, "OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND");
-            return;
-        }
-        default: {
-            fprintf(stream, "?(%u)", exp_type);
-            return;
-        }
+        case (OFPEC_EXP_STATE_MOD_FAILED): {       fprintf(stream, "OFPEC_EXP_STATE_MOD_FAILED"); return; }
+        case (OFPEC_EXP_STATE_MOD_BAD_COMMAND): {     fprintf(stream, "OFPEC_EXP_STATE_MOD_BAD_COMMAND"); return; }
+        case (OFPEC_EXP_SET_EXTRACTOR): {        fprintf(stream, "OFPEC_EXP_SET_EXTRACTOR"); return; }
+        case (OFPEC_EXP_SET_FLOW_STATE): {       fprintf(stream, "OFPEC_EXP_SET_FLOW_STATE"); return; }
+        case (OFPEC_EXP_DEL_FLOW_STATE): {       fprintf(stream, "OFPEC_EXP_DEL_FLOW_STATE"); return; }
+        case (OFPEC_BAD_EXP_MESSAGE): {          fprintf(stream, "OFPEC_BAD_EXP_MESSAGE"); return; }
+        case (OFPEC_BAD_EXP_ACTION): {           fprintf(stream, "OFPEC_BAD_EXP_ACTION"); return; }
+        case (OFPEC_BAD_EXP_LEN): {              fprintf(stream, "OFPEC_BAD_EXP_LEN"); return; }
+        case (OFPEC_BAD_TABLE_ID): {             fprintf(stream, "OFPEC_BAD_TABLE_ID"); return; }
+        case (OFPEC_BAD_MATCH_WILDCARD): {       fprintf(stream, "OFPEC_BAD_MATCH_WILDCARD"); return; }
+        case (OFPET_BAD_EXP_INSTRUCTION): {       fprintf(stream, "OFPET_BAD_EXP_INSTRUCTION"); return; }
+        case (OFPEC_EXP_PKTTMP_MOD_FAILED): {       fprintf(stream, "OFPEC_EXP_PKTTMP_MOD_FAILED"); return; }
+        case (OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND): {       fprintf(stream, "OFPEC_EXP_PKTTMP_MOD_BAD_COMMAND"); return; }
+        case (OFPEC_BAD_EXTRACTOR_ID): {       fprintf(stream, "OFPEC_BAD_EXTRACTOR_ID"); return; }
+        case (OFPEC_BAD_CONDITION_ID): {       fprintf(stream, "OFPEC_BAD_CONDITION_ID"); return; }
+        case (OFPEC_BAD_CONDITION): {       fprintf(stream, "OFPEC_BAD_CONDITION"); return; }
+        case (OFPEC_BAD_OPERAND_TYPE): {       fprintf(stream, "OFPEC_BAD_OPERAND_TYPE"); return; }
+        case (OFPEC_BAD_FLOW_DATA_VAR_ID): {       fprintf(stream, "OFPEC_BAD_FLOW_DATA_VAR_ID"); return; }
+        case (OFPEC_BAD_GLOBAL_DATA_VAR_ID): {       fprintf(stream, "OFPEC_BAD_GLOBAL_DATA_VAR_ID"); return; }
+        case (OFPEC_BAD_HEADER_FIELD_SIZE): {       fprintf(stream, "OFPEC_BAD_HEADER_FIELD_SIZE"); return; }
+        case (OFPEC_BAD_OPCODE): {       fprintf(stream, "OFPEC_BAD_OPCODE"); return; }
+        case (OFPEC_BAD_HEADER_EXTRACTOR): {       fprintf(stream, "OFPEC_BAD_HEADER_EXTRACTOR"); return; }
+        case (OFPEC_BAD_SOURCE_TYPE): {       fprintf(stream, "OFPEC_BAD_SOURCE_TYPE"); return; }
+        default: {                               fprintf(stream, "?(%u)", exp_type); return; }
     }
 }
 
@@ -2750,6 +2682,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
 
             break;}
         case OPCODE_EWMA:{
+            OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_EWMA");
             //TODO Davide
             break;}
         case OPCODE_POLY_SUM:{
