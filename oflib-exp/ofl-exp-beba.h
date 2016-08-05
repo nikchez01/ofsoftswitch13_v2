@@ -335,6 +335,9 @@ extractors_are_equal(struct key_extractor *ke1, struct key_extractor *ke2);
 void
 state_table_flush(struct state_table *table);
 
+uint32_t
+compute_key_len(struct key_extractor *extractor);
+
 /*
  * State Sync: One extra argument (i.e., ntf_message) is passed at the end of this function.
  */
