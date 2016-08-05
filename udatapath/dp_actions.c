@@ -1224,3 +1224,7 @@ dp_actions_check_set_field_req(struct ofl_msg_flow_mod *msg, size_t actions_num,
     return 0;
 }
 
+void
+dp_actions_set_field(struct packet *pkt, struct ofl_action_set_field *act){
+    return set_field(pkt,act);
+}

@@ -75,4 +75,8 @@ dp_actions_validate(struct datapath *dp, size_t actions_num, struct ofl_action_h
 ofl_err
 dp_actions_check_set_field_req(struct ofl_msg_flow_mod *msg, size_t actions_num, struct ofl_action_header **actions);
 
+/* Executes the action on the given packet. */
+void
+dp_actions_set_field(struct packet *pkt, struct ofl_action_set_field *act);
+
 #endif /* DP_ACTIONS_H */

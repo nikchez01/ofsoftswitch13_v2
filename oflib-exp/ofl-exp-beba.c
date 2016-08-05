@@ -830,6 +830,38 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             *len -= sizeof(struct ofp_exp_action_set_global_state);
             break;
         }
+
+        case (OFPAT_EXP_INC_STATE):
+        {
+            struct ofp_exp_action_inc_state *sa;
+            struct ofl_exp_action_inc_state *da;
+            sa = (struct ofp_exp_action_inc_state*)ext;
+            da = (struct ofl_exp_action_inc_state *)malloc(sizeof(struct ofl_exp_action_inc_state));
+
+            da->header.header.experimenter_id = ntohl(exp->experimenter);
+            da->header.act_type = ntohl(ext->act_type);
+
+            *dst = (struct ofl_action_header *)da;
+            if (*len < sizeof(struct ofp_exp_action_inc_state)) {
+                OFL_LOG_WARN(LOG_MODULE, "Received SET INC STATE action has invalid length (%zu).", *len);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+            }
+
+            if (sa->table_id >= PIPELINE_TABLES) {
+                if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
+                    char *ts = ofl_table_to_string(sa->table_id);
+                    OFL_LOG_WARN(LOG_MODULE, "Received SET INC STATE action has invalid table_id (%s).", ts);
+                    free(ts);
+                }
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+            }
+
+            da->table_id = sa->table_id;
+
+            *len -= sizeof(struct ofp_exp_action_inc_state);
+            break;
+        }
+        
         case (OFPAT_EXP_SET_DATA_VAR):
         {
             // At unpack time we do NOT check if stage is stateful and state table is configured: those checks are run at action execution time
@@ -916,37 +948,81 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             break;
         }
 
-        case (OFPAT_EXP_INC_STATE):
+        case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD):
         {
-            struct ofp_exp_action_inc_state *sa;
-            struct ofl_exp_action_inc_state *da;
-            sa = (struct ofp_exp_action_inc_state*)ext;
-            da = (struct ofl_exp_action_inc_state *)malloc(sizeof(struct ofl_exp_action_inc_state));
+            struct ofp_exp_action_write_context_to_field *sa;
+            struct ofl_exp_action_write_context_to_field *da;
 
+            sa = (struct ofp_exp_action_write_context_to_field *)ext;
+            da = (struct ofl_exp_action_write_context_to_field *)malloc(sizeof(struct ofl_exp_action_write_context_to_field));
             da->header.header.experimenter_id = ntohl(exp->experimenter);
             da->header.act_type = ntohl(ext->act_type);
-
             *dst = (struct ofl_action_header *)da;
-            if (*len < sizeof(struct ofp_exp_action_inc_state)) {
-                OFL_LOG_WARN(LOG_MODULE, "Received SET INC STATE action has invalid length (%zu).", *len);
+
+            if (*len < sizeof(struct ofp_exp_action_write_context_to_field)) {
+                OFL_LOG_WARN(LOG_MODULE, "Received WRITE CONTEXT TO FIELD action has invalid length (%zu).", *len);
                 return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
             }
 
-            if (sa->table_id >= PIPELINE_TABLES) {
+            if (sa->src_type > SOURCE_TYPE_STATE) {
                 if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
-                    char *ts = ofl_table_to_string(sa->table_id);
-                    OFL_LOG_WARN(LOG_MODULE, "Received SET INC STATE action has invalid table_id (%s).", ts);
-                    free(ts);
+                    OFL_LOG_WARN(LOG_MODULE, "Received WRITE CONTEXT TO FIELD action has invalid src_type (%u).", sa->src_type);
                 }
-                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_TABLE_ID);
+                return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_SOURCE_TYPE);
             }
 
-            da->table_id = sa->table_id;
+            switch (sa->src_type){
+                case SOURCE_TYPE_FLOW_DATA_VAR:
+                    if (sa->src_id >= OFPSC_MAX_FLOW_DATA_VAR_NUM){
+                        OFL_LOG_WARN(LOG_MODULE, "Received WRITE CONTEXT TO FIELD action has invalid flow data variable id (src_id) (%u).", sa->src_id );
+                        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_FLOW_DATA_VAR_ID);
+                    }
+                    break;
+                case SOURCE_TYPE_GLOBAL_DATA_VAR:
+                    if (sa->src_id >= OFPSC_MAX_GLOBAL_DATA_VAR_NUM){
+                        OFL_LOG_WARN(LOG_MODULE, "Received WRITE CONTEXT TO FIELD action has invalid global data variable id (src_id) (%u).", sa->src_id );
+                        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_GLOBAL_DATA_VAR_ID);
+                    }
+                    break;
+                case SOURCE_TYPE_STATE:
+                    sa->src_id = 0;
+                    break;
+            }
 
-            *len -= sizeof(struct ofp_exp_action_inc_state);
+            da->src_type = sa->src_type;
+            da->src_id = sa->src_id;
+            da->dst_field = ntohl(sa->dst_field);
+
+            /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
+            because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
+            necessary CRC recalculation based on the header field.>>
+            The same must apply for all the other OS metadata fields!
+            */
+            //TODO Davide: what about METADATA? Should we need a dedicated WRITE CONTEXT TO METADATA? Maybe we can just remove the check below...
+            if(da->dst_field == OXM_OF_IN_PORT || da->dst_field == OXM_OF_IN_PHY_PORT
+                                    || da->dst_field == OXM_OF_METADATA
+                                    || da->dst_field == OXM_OF_IPV6_EXTHDR
+                                    || da->dst_field == OXM_EXP_GLOBAL_STATE
+                                    || da->dst_field == OXM_EXP_STATE
+                                    || da->dst_field == OXM_EXP_CONDITION0
+                                    || da->dst_field == OXM_EXP_CONDITION1
+                                    || da->dst_field == OXM_EXP_CONDITION2
+                                    || da->dst_field == OXM_EXP_CONDITION3
+                                    || da->dst_field == OXM_EXP_CONDITION4
+                                    || da->dst_field == OXM_EXP_CONDITION5
+                                    || da->dst_field == OXM_EXP_CONDITION6
+                                    || da->dst_field == OXM_EXP_CONDITION7
+                                    || da->dst_field == OXM_EXP_TIMESTAMP
+                                    || da->dst_field == OXM_EXP_RANDOM
+                                    || da->dst_field == OXM_EXP_PKT_LEN){
+                
+                return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_SET_TYPE);
+                break;
+            }
+
+            *len -= sizeof(struct ofp_exp_action_write_context_to_field);
             break;
         }
-
         default:
         {
             struct ofl_action_experimenter *da;
@@ -1058,6 +1134,24 @@ ofl_exp_beba_act_pack(struct ofl_action_header const *src, struct ofp_action_hea
 
             return sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
         }
+        case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD): 
+        {
+            struct ofl_exp_action_write_context_to_field *sa = (struct ofl_exp_action_write_context_to_field *) ext;
+            struct ofp_exp_action_write_context_to_field *da = (struct ofp_exp_action_write_context_to_field *) dst;
+
+            da->header.header.experimenter = htonl(exp->experimenter_id);
+            da->header.act_type = htonl(ext->act_type);
+            memset(da->header.pad, 0x00, 4);
+
+            da->src_type = sa->src_type;
+            da->src_id = sa->src_id;
+            da->dst_field = htonl(sa->dst_field);
+            memset(da->pad2, 0x00, 2);
+
+            dst->len = htons(sizeof(struct ofp_exp_action_write_context_to_field));
+
+            return sizeof(struct ofp_exp_action_write_context_to_field);
+        }
         default:
             return 0;
     }
@@ -1085,6 +1179,8 @@ ofl_exp_beba_act_ofp_len(struct ofl_action_header const *act)
             //ROUND_UP to 8 bytes
             return sizeof(struct ofp_exp_action_set_data_variable) + ROUND_UP(sizeof(uint32_t)*(sa->field_count),8);
         }
+        case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD):
+            return sizeof(struct ofp_exp_action_write_context_to_field);
         default:
             return 0;
     }
@@ -1197,8 +1293,31 @@ ofl_exp_beba_act_to_string(struct ofl_action_header const *act)
             sprintf(string + strlen(string), "]}");
             //TODO Davide: print parametric key fields (if any)
             return string;
-            break;
         }
+        case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD):
+        {
+            struct ofl_exp_action_write_context_to_field *a = (struct ofl_exp_action_write_context_to_field *)ext;
+            char *string = malloc(200);
+
+            sprintf(string, "{write_context_to_field=[");
+            switch (a->src_type){
+                case SOURCE_TYPE_FLOW_DATA_VAR:
+                    sprintf(string + strlen(string), "src=\"flow_data_var_%u\",",a->src_id);
+                    break;
+                case SOURCE_TYPE_GLOBAL_DATA_VAR:
+                    sprintf(string + strlen(string), "src=\"global_data_var_%u\",",a->src_id);
+                    break;
+                case SOURCE_TYPE_STATE:
+                    sprintf(string + strlen(string), "src=\"state\",");
+                    break;
+            }
+
+            sprintf(string + strlen(string), "field=\"");
+            sprintf(string + strlen(string), ofl_oxm_type_to_string(a->dst_field));
+            sprintf(string + strlen(string), "\"]}");
+            return string;
+        }
+
     }
     return NULL;
 }
@@ -1225,6 +1344,12 @@ ofl_exp_beba_act_free(struct ofl_action_header *act) {
         }
         case (OFPAT_EXP_SET_DATA_VAR): {
             struct ofl_exp_action_set_data_variable *a = (struct ofl_exp_action_set_data_variable *) ext;
+            free(a);
+            break;
+        }
+        case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD):
+        {
+            struct ofl_exp_action_write_context_to_field *a = (struct ofl_exp_action_write_context_to_field *)ext;
             free(a);
             break;
         }
@@ -3100,6 +3225,50 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     memcpy(e->key, key, MAX_STATE_KEY_LEN);
     hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0));
     return 0;
+}
+
+struct ofl_action_set_field * state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt) {
+    struct state_entry *state_entry;
+    struct ofl_action_set_field *set_field_act;
+    uint32_t src_value = 0;
+    
+    switch (act->src_type){
+        case SOURCE_TYPE_FLOW_DATA_VAR:
+            state_entry = state_table_lookup(table, pkt);
+            if(state_entry!=NULL){
+                src_value = state_entry->flow_data_var[act->src_id];
+            } else {
+                OFL_LOG_WARN(LOG_MODULE, "ERROR WRITE CONTEXT TO FIELD at stage %u: flow_data_var cannot be found", pkt->table_id);
+                return NULL;
+            }
+            break;
+        case SOURCE_TYPE_GLOBAL_DATA_VAR:
+            src_value = table->global_data_var[act->src_id];
+            break;
+        case SOURCE_TYPE_STATE:
+            state_entry = state_table_lookup(table, pkt);
+            if(state_entry!=NULL){
+                src_value = (uint32_t) state_entry->state;
+            } else {
+                OFL_LOG_WARN(LOG_MODULE, "ERROR WRITE CONTEXT TO FIELD at stage %u: state cannot be found", pkt->table_id);
+                return NULL;
+            }
+            break;
+    }
+    
+    // build a dummy ofl_action_set_field to re-use code from standard OpenFlow set-field action
+    set_field_act = (struct ofl_action_set_field *)malloc(sizeof(struct ofl_action_set_field));
+    set_field_act->field = (struct ofl_match_tlv*) malloc(sizeof(struct ofl_match_tlv));
+    set_field_act->field->header = act->dst_field;
+    set_field_act->field->value = malloc(OXM_LENGTH(set_field_act->field->header));
+    //memcpy size is min_size(src_value and dst_field)
+    if (OXM_LENGTH(set_field_act->field->header)>sizeof(src_value)) {
+        memcpy(set_field_act->field->value , &src_value, sizeof(src_value));
+    } else {
+        memcpy(set_field_act->field->value , &src_value, OXM_LENGTH(set_field_act->field->header));
+    }
+    
+    return set_field_act;
 }
 
 /*

@@ -87,7 +87,7 @@ void
 ofl_action_type_print(FILE *stream, uint16_t type);
 
 char *
-ofl_oxm_type_to_string(uint16_t type);
+ofl_oxm_type_to_string(uint32_t type);
 
 void
 ofl_oxm_type_print(FILE *stream, uint32_t type);

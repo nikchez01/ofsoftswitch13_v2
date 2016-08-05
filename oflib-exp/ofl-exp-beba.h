@@ -235,6 +235,13 @@ struct ofl_exp_action_set_data_variable {
     uint32_t fields[OFPSC_MAX_FIELD_COUNT];
 };
 
+struct ofl_exp_action_write_context_to_field {
+    struct ofl_exp_beba_act_header header; /* OFPAT_EXP_WRITE_CONTEXT_TO_FIELD */
+    uint8_t src_type;
+    uint8_t src_id;
+    uint32_t dst_field;
+};
+
 /*************************************************************************/
 /*                        experimenter state table						 */
 /*************************************************************************/
@@ -373,6 +380,9 @@ state_table_set_header_field_extractor(struct state_table *table, struct ofl_exp
 
 int
 state_table_evaluate_condition(struct state_table *state_table,struct packet *pkt,struct condition_table_entry* condition_table_entry);
+
+struct ofl_action_set_field *
+state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt);
 
 /*experimenter message functions*/
 

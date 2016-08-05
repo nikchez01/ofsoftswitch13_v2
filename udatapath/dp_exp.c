@@ -126,6 +126,23 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                 }
                 break;
             }
+            case (OFPAT_EXP_WRITE_CONTEXT_TO_FIELD): 
+            {
+                struct ofl_exp_action_write_context_to_field *act = (struct ofl_exp_action_write_context_to_field *)action;
+                struct state_table *st = pkt->dp->pipeline->tables[pkt->table_id]->state_table;
+                struct ofl_action_set_field* set_field_act;
+                if (state_table_is_stateful(st) && state_table_is_configured(st)){
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "executing action WRITE CONTEXT TO FIELD at stage %u", pkt->table_id);
+                    set_field_act = (struct ofl_action_set_field*) state_table_write_context_to_field(st, act, pkt);
+                    if (set_field_act!=NULL){
+                        dp_actions_set_field(pkt, set_field_act);
+                    }
+                }
+                else{
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "WRITE CONTEXT TO FIELD at stage %u: stage not stateful", pkt->table_id);
+                }
+                break;
+            }
             default:
                 VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to execute unknown experimenter action (%u).", htonl(act->experimenter_id));
                 break;
