@@ -3002,7 +3002,6 @@ ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl
                 e->flow_data_var[msg->flow_data_variable_id] = (e->flow_data_var[msg->flow_data_variable_id] & ~(msg->mask)) | (msg->value & msg->mask);
                 return 0;
             }
-            return 0;
     }
 
    
@@ -3226,6 +3225,7 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0));
     return 0;
 }
+
 
 struct ofl_action_set_field * state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt) {
     struct state_entry *state_entry;
