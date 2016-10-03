@@ -2449,7 +2449,7 @@ int state_table_evaluate_condition(struct state_table *state_table,struct packet
             return operand_1_value<=operand_2_value;}
         case CONDITION_EQ:{
             OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_EQ");
-            return operand_1_value=operand_2_value;}
+            return operand_1_value==operand_2_value;}
         case CONDITION_NEQ:{
             OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_NEQ");
             return operand_1_value!=operand_2_value;}
