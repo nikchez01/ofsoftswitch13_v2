@@ -306,6 +306,171 @@ struct oxm_field {
     bool maskable;                    /* Writable with OXAST_REG_{MOVE,LOAD}? */
 };
 
+
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
+
+#define oxm_set_info(info, FIELD, VALUE) do { \
+	(info)->FIELD = (VALUE);              \
+	(info)->has_ ## FIELD = true;         \
+} while (0)
+
+
+#define oxm_reset_info(info) memset(info, 0, offsetof(struct oxm_packet_info, metadata));
+
+
+#define oxm_lookup_info(info, LEN, FIELD) ((info)->has_ ## FIELD ? ({ *LEN = sizeof((info)->FIELD); &(info->FIELD); }) : ({ *LEN = 0; NULL; }))
+
+
+struct oxm_packet_info {
+
+	bool	has_metadata;
+	bool	has_tunnel_id;
+	bool	has_state;
+	bool	has_global_state;
+	bool	has_in_port;
+
+	bool	has_pbb_isid;
+
+	bool	has_mpls_label;
+	bool	has_mpls_tc;
+	bool	has_mpls_bos;
+
+	bool	has_eth_type;
+	bool	has_eth_src;
+	bool	has_eth_dst;
+
+	bool	has_vlan_id;
+	bool	has_vlan_pcp;
+
+	bool	has_arp_ar_sha;
+	bool	has_arp_ar_tha;
+	bool	has_arp_ar_spa;
+	bool	has_arp_ar_tpa;
+	bool	has_arp_ar_op;
+
+	bool	has_ip_src;
+	bool	has_ip_dst;
+	bool	has_ip_proto;
+	bool	has_ip_ecn;
+	bool	has_ip_dscp;
+
+	bool	has_ipv6_src;
+	bool	has_ipv6_dst;
+	bool	has_ipv6_fl;
+	bool	has_ipv6_next_hd;
+
+	bool	has_ipv6_nd_target;
+	bool	has_ipv6_nd_sll;
+	bool	has_ipv6_nd_tll;
+
+	bool	has_tcp_src;
+	bool	has_tcp_dst;
+	bool	has_tcp_flags;
+
+	bool	has_udp_src;
+	bool	has_udp_dst;
+
+	bool	has_sctp_src;
+	bool	has_sctp_dst;
+
+	bool	has_icmp_type;
+	bool	has_icmp_code;
+
+	bool	has_icmp6_type;
+	bool	has_icmp6_code;
+
+	/* --------------------------------------------- */
+        /* note: the first meta field must be metadata   */
+	/* --------------------------------------------- */
+
+	uint64_t	metadata;
+	uint64_t	tunnel_id;
+	uint32_t	state;
+	uint32_t	global_state;
+	uint32_t	in_port;
+
+	uint32_t	pbb_isid;
+
+	uint32_t	mpls_label;
+	uint32_t	mpls_tc;
+	uint32_t	mpls_bos;
+
+	uint16_t	eth_type;
+	uint8_t		eth_src[ETH_ADDR_LEN];
+	uint8_t		eth_dst[ETH_ADDR_LEN];
+
+	uint16_t	vlan_id;
+	uint8_t		vlan_pcp;
+
+	uint64_t	arp_ar_sha;
+	uint64_t	arp_ar_tha;
+	uint32_t	arp_ar_spa;
+	uint32_t	arp_ar_tpa;
+	uint16_t	arp_ar_op;
+
+	union
+	{
+		struct
+		{
+		uint32_t	ip_src;
+		uint32_t	ip_dst;
+		uint8_t		ip_proto;
+		uint8_t		ip_ecn;
+		uint8_t		ip_dscp;
+		};
+
+		struct
+		{
+		uint32_t	ipv6_fl;
+		uint8_t		ipv6_src[IPv6_ADDR_LEN];
+		uint8_t		ipv6_dst[IPv6_ADDR_LEN];
+		uint8_t		ipv6_nd_target[IPv6_ADDR_LEN];
+		uint8_t		ipv6_nd_sll[ETH_ADDR_LEN];
+		uint8_t		ipv6_nd_tll[ETH_ADDR_LEN];
+		uint8_t		ipv6_next_hd;
+		};
+	};
+
+
+	union
+	{
+		struct
+		{
+		uint16_t	tcp_src;
+		uint16_t	tcp_dst;
+		uint16_t	tcp_flags;
+		};
+
+		struct
+		{
+		uint16_t	udp_src;
+		uint16_t	udp_dst;
+		};
+
+		struct
+		{
+		uint8_t		icmp_type;
+		uint8_t		icmp_code;
+		};
+
+		struct
+		{
+		uint8_t		icmp6_type;
+		uint8_t		icmp6_code;
+		};
+
+		struct
+		{
+		uint16_t	sctp_src;
+		uint16_t	sctp_dst;
+		};
+	};
+
+};
+
 /* All the known fields. */
 extern struct oxm_field all_fields[NUM_OXM_FIELDS];
 
@@ -350,5 +515,7 @@ int
 oxm_field_bits(uint32_t header);
 
 
+void *
+oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *length);
 
 #endif /* nx-match.h */

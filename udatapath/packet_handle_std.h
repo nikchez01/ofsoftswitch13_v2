@@ -36,50 +36,153 @@
 #include "packets.h"
 #include "match_std.h"
 #include "oflib/ofl-structs.h"
+#include "oflib/oxm-match.h"
+
 
 /****************************************************************************
  * A handler processing a datapath packet for standard matches.
  ****************************************************************************/
 
+
 /* The data associated with the handler */
+
+
+
 struct packet_handle_std {
+
    struct packet              *pkt;
-   struct protocols_std        proto;
 
-   struct ofl_match  match;  /* Match fields extracted from the packet
-                                are also stored in a match structure
-                                for convenience */
+   // struct ofl_match  pkt_match;  /* Match fields extracted from the packet
+   //      			    are also stored in a match structure
+   //      			    for convenience */
 
-   bool  valid; /* Set to true if the handler data is valid.
-                   if false, it is revalidated before
-                                           executing any methods. */
-   bool	 table_miss; /* Packet was matched
-   					    against table miss flow*/
+   struct protocols_std proto;	   /* Match fields extracted from the packet */
+
+   struct oxm_packet_info info;
+
+   bool  valid;			/* Set to true if the handler data is valid.
+			     	   if false, it is revalidated before
+                             	   executing any methods. */
+
+   bool	 table_miss;		/* Packet was matched
+   			     	   against table miss flow*/
 };
 
 
+
+/* Revalidates the handler data */
+void
+packet_handle_std_validate(struct packet_handle_std *handle);
+
 /* Creates a handler */
+
+static inline
+void packet_handle_std_init(struct packet_handle_std *handle, struct packet *pkt)
+{
+	// FLAT
+	// handle->proto = xmalloc(sizeof(struct protocols_std));
+
+	handle->pkt = pkt;
+
+	// hmap_init(&handle->pkt_match.match_fields);
+
+	handle->valid = false;
+	packet_handle_std_validate(handle);
+}
+
+
+static inline
 struct packet_handle_std *
-packet_handle_std_create(struct packet *pkt);
+packet_handle_std_create(struct packet *pkt)
+{
+	struct packet_handle_std *handle = xmalloc(sizeof(struct packet_handle_std));
+	// FLAT
+	// handle->proto = xmalloc(sizeof(struct protocols_std));
 
-void
-packet_handle_std_init(struct packet_handle_std *, struct packet *pkt);
+	handle->pkt = pkt;
 
-/* Destroys a handler */
+	// hmap_init(&handle->pkt_match.match_fields);
+
+	handle->valid = false;
+	packet_handle_std_validate(handle);
+	return handle;
+}
+
+
+static inline
+struct packet_handle_std *
+packet_handle_std_clone(struct packet *pkt, struct packet_handle_std *handle UNUSED)
+{
+    struct packet_handle_std *clone = xmalloc(sizeof(struct packet_handle_std));
+
+    // FLAT
+    // clone->proto = xmalloc(sizeof(struct protocols_std));
+    //
+
+    clone->pkt = pkt;
+
+    // hmap_init(&clone->pkt_match.match_fields);
+
+    clone->valid = false;
+    packet_handle_std_validate(clone);
+    return clone;
+}
+
+static inline
 void
-packet_handle_std_destroy(struct packet_handle_std *handle);
+packet_handle_std_destroy(struct packet_handle_std *handle) {
+
+    (void)handle;
+
+    // struct ofl_match_tlv * iter, *next;
+
+    // if (unlikely(handle->pkt_match.dirty))
+    // {
+    // HMAP_FOR_EACH_SAFE(iter, next, struct ofl_match_tlv, hmap_node, &handle->pkt_match.match_fields){
+    //     if (iter->ownership) {
+    //     	free(iter->value);
+    //     	free(iter);
+    //     }
+    // }
+    //     handle->pkt_match.dirty = false;
+    // }
+
+    // FLAT
+    // free(handle->proto);
+
+    // hmap_destroy(&handle->pkt_match.match_fields);
+
+    // FLAT
+    // free(handle);
+}
+
 
 /* Returns true if the TTL fields of the supported protocols are valid. */
 bool
 packet_handle_std_is_ttl_valid(struct packet_handle_std *handle);
 
 /* Returns true if the packet is a fragment (IPv4). */
-bool
-packet_handle_std_is_fragment(struct packet_handle_std *handle);
+
+static inline bool
+packet_handle_std_is_fragment(struct packet_handle_std *handle)
+{
+    packet_handle_std_validate(handle);
+    return ((handle->proto.ipv4 != NULL) && IP_IS_FRAGMENT(handle->proto.ipv4->ip_frag_off));
+}
+
 
 /* Returns true if the packet matches the given standard match structure. */
-bool
-packet_handle_std_match(struct packet_handle_std *handle,  struct ofl_match *match, struct ofl_exp *exp);
+static inline
+bool packet_handle_std_match(struct packet_handle_std *handle, struct ofl_match *match, struct ofl_exp *exp) {
+
+    if (unlikely(!handle->valid)) {
+        packet_handle_std_validate(handle);
+        if (unlikely(!handle->valid)) {
+            return false;
+        }
+    }
+    return packet_match_pkt(match, &handle->info, exp);
+}
 
 /* Converts the packet to a string representation */
 char *
@@ -88,13 +191,6 @@ packet_handle_std_to_string(struct packet_handle_std *handle);
 void
 packet_handle_std_print(FILE *stream, struct packet_handle_std *handle);
 
-/* Clones the handler, and associates it with the new packet. */
-struct packet_handle_std *
-packet_handle_std_clone(struct packet *pkt, struct packet_handle_std *handle);
-
-/* Revalidates the handler data */
-void
-packet_handle_std_validate(struct packet_handle_std *handle);
 
 
 #endif /* PACKET_HANDLE_STD_H */

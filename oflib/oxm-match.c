@@ -196,8 +196,7 @@ oxm_match_lookup(uint32_t header, const struct ofl_match *omt)
 {
     struct ofl_match_tlv *f;
 
-    HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node, hash_int(header, 0),
-    					    &omt->match_fields) {
+    HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node, hash_int(header, 0), &omt->match_fields) {
         if (f->header == header) {
             return f;
         }
@@ -1041,5 +1040,71 @@ int oxm_put_match(struct ofpbuf *buf, struct ofl_match const *omt, struct ofl_ex
     return match_len;
 }
 
+
+void *
+oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *length)
+{
+	switch(oxm_label)
+	{
+	case OXM_OF_IN_PORT	  : return oxm_lookup_info(info, length,  in_port);
+	case OXM_OF_METADATA	  : return oxm_lookup_info(info, length,  metadata);
+	case OXM_OF_TUNNEL_ID	  : return oxm_lookup_info(info, length,  tunnel_id);
+	case OXM_EXP_STATE	  : return oxm_lookup_info(info, length,  state);
+	case OXM_EXP_GLOBAL_STATE : return oxm_lookup_info(info, length,  global_state);
+
+
+	case OXM_OF_ETH_TYPE	: return oxm_lookup_info(info, length,  eth_type);
+	case OXM_OF_ETH_SRC	: return oxm_lookup_info(info, length,  eth_src);
+	case OXM_OF_ETH_DST	: return oxm_lookup_info(info, length,  eth_dst);
+
+	case OXM_OF_VLAN_VID	: return oxm_lookup_info(info, length,  vlan_id);
+	case OXM_OF_VLAN_PCP	: return oxm_lookup_info(info, length,  vlan_pcp);
+
+	case OXM_OF_PBB_ISID	: return oxm_lookup_info(info, length,  pbb_isid);
+
+	case OXM_OF_MPLS_LABEL	: return oxm_lookup_info(info, length,  mpls_label);
+	case OXM_OF_MPLS_TC	: return oxm_lookup_info(info, length,  mpls_tc);
+	case OXM_OF_MPLS_BOS	: return oxm_lookup_info(info, length,  mpls_bos);
+
+	case OXM_OF_ARP_OP	: return oxm_lookup_info(info, length,  arp_ar_op);
+	case OXM_OF_ARP_SHA	: return oxm_lookup_info(info, length,  arp_ar_sha);
+	case OXM_OF_ARP_SPA	: return oxm_lookup_info(info, length,  arp_ar_spa);
+	case OXM_OF_ARP_TPA	: return oxm_lookup_info(info, length,  arp_ar_tpa);
+	case OXM_OF_ARP_THA	: return oxm_lookup_info(info, length,  arp_ar_tha);
+
+	case OXM_OF_IPV4_SRC	: return oxm_lookup_info(info, length,  ip_src);
+	case OXM_OF_IPV4_DST	: return oxm_lookup_info(info, length,  ip_dst);
+	case OXM_OF_IP_ECN	: return oxm_lookup_info(info, length,  ip_ecn);
+	case OXM_OF_IP_DSCP	: return oxm_lookup_info(info, length,  ip_dscp);
+
+	case OXM_OF_IP_PROTO	: return (oxm_lookup_info(info, length,  ip_proto) ? : oxm_lookup_info(info, length,  ipv6_next_hd));
+
+	case OXM_OF_IPV6_SRC	: return oxm_lookup_info(info, length,  ipv6_src);
+	case OXM_OF_IPV6_DST	: return oxm_lookup_info(info, length,  ipv6_dst);
+	case OXM_OF_IPV6_FLABEL : return oxm_lookup_info(info, length,  ipv6_fl);
+
+	case OXM_OF_IPV6_ND_TARGET : return oxm_lookup_info(info, length,  ipv6_nd_target);
+	case OXM_OF_IPV6_ND_SLL    : return oxm_lookup_info(info, length,  ipv6_nd_sll);
+	case OXM_OF_IPV6_ND_TLL    : return oxm_lookup_info(info, length,  ipv6_nd_tll);
+
+	case OXM_OF_TCP_SRC	: return oxm_lookup_info(info, length,  tcp_src);
+	case OXM_OF_TCP_DST	: return oxm_lookup_info(info, length,  tcp_dst);
+	case OXM_OF_TCP_FLAGS	: return oxm_lookup_info(info, length,  tcp_flags);
+
+	case OXM_OF_UDP_SRC	: return oxm_lookup_info(info, length,  udp_src);
+	case OXM_OF_UDP_DST	: return oxm_lookup_info(info, length,  udp_dst);
+
+	case OXM_OF_ICMPV4_TYPE	: return oxm_lookup_info(info, length,  icmp_type);
+	case OXM_OF_ICMPV4_CODE	: return oxm_lookup_info(info, length,  icmp_code);
+
+	case OXM_OF_ICMPV6_TYPE	: return oxm_lookup_info(info, length,  icmp6_type);
+	case OXM_OF_ICMPV6_CODE	: return oxm_lookup_info(info, length,  icmp6_code);
+
+	case OXM_OF_SCTP_SRC	: return oxm_lookup_info(info, length,  sctp_src);
+	case OXM_OF_SCTP_DST	: return oxm_lookup_info(info, length,  sctp_dst);
+
+	default: return NULL;
+	}
+}
 
 

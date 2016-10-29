@@ -1700,26 +1700,23 @@ void state_table_destroy(struct state_table *table)
     hmap_destroy(&table->state_entries);
     free(table);
 }
+
+
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
 {
-    int i;
-    uint32_t extracted_key_len=0;
-    struct ofl_match_tlv *f;
+    int i, extracted_key_len = 0;
 
-    for (i=0; i<extractor->field_count; i++) {
-        uint32_t type = (int)extractor->fields[i];
-        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-            hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
-                if (type == f->header) {
-                    memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
-                    extracted_key_len += OXM_LENGTH(f->header);
-                    break;
-                }
+    for (i = 0; i < extractor->field_count; i++) {
+        size_t length;
+        void *field = oxm_match_lookup_info(&pkt->handle_std.info, extractor->fields[i], &length);
+        if (field) {
+            memcpy(&buf[extracted_key_len], field, length);
+            extracted_key_len += length;
         }
     }
-    /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
-    return extracted_key_len == extractor->key_len;
+
+    return (extracted_key_len == extractor->key_len) ? 1 : 0;
 }
 
 static bool
@@ -1809,10 +1806,6 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
     return &table->default_state_entry;
 }
 
-void state_table_write_state_header(struct state_entry *entry, struct ofl_match_tlv *f) {
-    uint32_t *state = (uint32_t *) (f->value + EXP_ID_LEN);
-    *state = entry->state;
-}
 
 ofl_err state_table_del_state(struct state_table *table, uint8_t *key, uint32_t len) {
     struct state_entry *e;

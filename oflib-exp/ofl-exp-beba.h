@@ -171,7 +171,7 @@ struct ofl_exp_action_set_state {
     uint32_t idle_rollback;
     uint32_t hard_timeout;
     uint32_t idle_timeout;
-    uint8_t bit; 
+    uint8_t bit;
 };
 
 struct ofl_exp_action_set_global_state {
@@ -263,8 +263,11 @@ bool state_table_is_enabled(struct state_table *table);
 struct state_entry *
 state_table_lookup(struct state_table*, struct packet *);
 
-void
-state_table_write_state_header(struct state_entry *, struct ofl_match_tlv *);
+static  inline
+void state_table_write_state_header(struct state_entry *entry, uint32_t *state)
+{
+    *state = entry->state;
+}
 
 bool
 extractors_are_equal(struct key_extractor *ke1, struct key_extractor *ke2);

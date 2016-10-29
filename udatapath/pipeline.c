@@ -82,13 +82,12 @@ is_table_miss(struct flow_entry *entry){
 
 }
 
-
 /* Sends a packet to the controller in a packet_in message */
 static void
 send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table_id, uint8_t reason) {
 
     struct ofl_msg_packet_in msg;
-    struct ofl_match *m;
+    // struct ofl_match *m;
     msg.header.type = OFPT_PACKET_IN;
     msg.total_len   = pkt->buffer->size;
     msg.reason      = reason;
@@ -108,13 +107,16 @@ send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table
         msg.data_length = pkt->buffer->size;
     }
 
-    m = &pkt->handle_std.match;
-    /* In this implementation the fields in_port and in_phy_port
-        always will be the same, because we are not considering logical
-        ports                                 */
-    msg.match = (struct ofl_match_header*)m;
-    dp_send_message(pl->dp, (struct ofl_msg_header *)&msg, NULL);
-    ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
+    // OXM_TODO
+
+    // m = &pkt->handle_std.pkt_match;
+    // /* In this implementation the fields in_port and in_phy_port
+    //     always will be the same, because we are not considering logical
+    //     ports                                 */
+    // msg.match = (struct ofl_match_header*)m;
+    // dp_send_message(pl->dp, (struct ofl_msg_header *)&msg, NULL);
+
+    // ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
 }
 
 /* Pass the packet through the flow tables.
@@ -123,8 +125,7 @@ void
 pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 {
     struct flow_table *table, *next_table;
-    struct ofl_match_tlv *f;
-    struct ofl_match_tlv *state_hdr = NULL;
+    uint32_t *state_ptr = NULL;
     bool gstate_set = false;
 
     if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
@@ -160,26 +161,40 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         #if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
+
             state_entry = state_table_lookup(table->state_table, pkt);
 
-            if (state_hdr == NULL) {
+            if (state_ptr == NULL) {
                 // Allocate state to packet headers (experimenter).
-                state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA,
-                                                        state_entry->state);
+
+                oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
+		state_ptr = &pkt->handle_std.info.state;
+
+		//
+                // state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.pkt_match, OXM_EXP_STATE, 0xBEBABEBA,
+                //                                         state_entry->state);
+
             } else {
                 // Rewrite existing header.
-                state_table_write_state_header(state_entry, state_hdr);
+                // state_table_write_state_header(state_entry, state_ptr);
+                oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
             }
 
             //TODO save global state header field ptr
             if (!gstate_set) {
-                // Append global states to packet headers.
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
-                                        hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.match.match_fields) {
-                    uint32_t *flags = (uint32_t *) (f->value + EXP_ID_LEN);
-                    *flags = (*flags & 0x00000000) | (pkt->dp->global_state);
-                    gstate_set = true;
-                }
+
+		uint32_t flags = pkt->handle_std.info.global_state;
+
+                flags = (flags & 0x00000000) | (pkt->dp->global_state);
+		oxm_set_info(&pkt->handle_std.info, global_state, flags);
+                gstate_set = true;
+
+                // // Append global states to packet headers.
+                // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node, hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.pkt_match.match_fields) {
+                //     uint32_t *flags = (uint32_t *) (f->value + EXP_ID_LEN);
+                //     *flags = (*flags & 0x00000000) | (pkt->dp->global_state);
+                //     gstate_set = true;
+                // }
             }
         } else {
             // FIXME: avoid matching on state on non-stateful stages.
@@ -189,10 +204,10 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         /* BEBA EXTENSION END */
 
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
-            char *m = ofl_structs_match_to_string((struct ofl_match_header *) &(pkt->handle_std.match), pkt->dp->exp);
-            VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.",
-                        table->stats->table_id, m);
-            free(m);
+            // OXM_TODO
+            // char *m = ofl_structs_match_to_string((struct ofl_match_header *) &(pkt->handle_std.pkt_match), pkt->dp->exp);
+            // VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.", table->stats->table_id, m);
+            // free(m);
         }
 
         entry = flow_table_lookup(table, pkt, pkt->dp->exp);
@@ -346,7 +361,7 @@ pipeline_handle_flow_mod(struct pipeline *pl, struct ofl_msg_flow_mod *msg,
                 VLOG_WARN_RL(LOG_MODULE, &rl, "The buffer flow_mod referred to was empty (%u).", msg->buffer_id);
             }
         }
-        
+
         send_flow_notification(pl->dp, msg, sender);
         ofl_msg_free_flow_mod(msg, !match_kept, !insts_kept, pl->dp->exp);
         return 0;
@@ -712,18 +727,28 @@ execute_entry(struct pipeline *pl, struct flow_entry *entry,
             }
             case OFPIT_WRITE_METADATA: {
                 struct ofl_instruction_write_metadata *wi = (struct ofl_instruction_write_metadata *)inst;
-                struct  ofl_match_tlv *f;
+		uint64_t *metadata;
+                size_t len;
 
                 /* NOTE: Hackish solution. If packet had multiple handles, metadata
                  *       should be updated in all. */
                 packet_handle_std_validate(&(*pkt)->handle_std);
+
                 /* Search field on the description of the packet. */
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                    hmap_node, hash_int(OXM_OF_METADATA,0), &(*pkt)->handle_std.match.match_fields){
-                    uint64_t *metadata = (uint64_t*) f->value;
+
+		metadata = oxm_lookup_info((&((*pkt)->handle_std.info)), &len, metadata);
+		if (metadata) {
                     *metadata = (*metadata & ~wi->metadata_mask) | (wi->metadata & wi->metadata_mask);
                     VLOG_DBG_RL(LOG_MODULE, &rl, "Executing write metadata: %"PRIx64"", *metadata);
-                }
+		}
+
+		// OXM_TODO
+                // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                //     hmap_node, hash_int(OXM_OF_METADATA,0), &(*pkt)->handle_std.pkt_match.match_fields){
+                //     uint64_t *metadata = (uint64_t*) f->value;
+                //     *metadata = (*metadata & ~wi->metadata_mask) | (wi->metadata & wi->metadata_mask);
+                //     VLOG_DBG_RL(LOG_MODULE, &rl, "Executing write metadata: %"PRIx64"", *metadata);
+                // }
                 break;
             }
             case OFPIT_WRITE_ACTIONS: {

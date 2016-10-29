@@ -1,5 +1,5 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
- * Copyright (c) 2012, CPqD, Brazil  
+ * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,11 +40,16 @@
  * Functions for comparing two extended match structures.
  ******************************************************
  **********************/
+struct oxm_packet_info;
+
 bool
 match_std_overlap(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp);
 
-bool 
+bool
 packet_match(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp);
+
+bool
+packet_match_pkt(struct ofl_match *a, struct oxm_packet_info *b, struct ofl_exp *exp);
 
 /* Returns true if match a matches match b, in a strict manner. */
 bool

@@ -413,12 +413,8 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 break;
             }
             case OXM_OF_TUNNEL_ID :{
-                struct  ofl_match_tlv *f;
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                    hmap_node, hash_int(OXM_OF_TUNNEL_ID, 0), &(pkt)->handle_std.match.match_fields){
-                    uint64_t *tunnel_id = (uint64_t*) f->value;
-                    *tunnel_id = *((uint64_t*) act->field->value);
-                }
+
+		oxm_set_info(&pkt->handle_std.info, tunnel_id, *act->field->value);
                 break;
             }
             default:
@@ -1120,8 +1116,12 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
             /* In this implementation the fields in_port and in_phy_port
                 always will be the same, because we are not considering logical
                 ports*/
-            msg.match = (struct ofl_match_header*) &pkt->handle_std.match;
-            dp_send_message(pkt->dp, (struct ofl_msg_header *)&msg, NULL);
+
+            exit(42);
+
+            // OXM_TODO
+            // msg.match = (struct ofl_match_header*) &pkt->handle_std.pkt_match;
+            // dp_send_message(pkt->dp, (struct ofl_msg_header *)&msg, NULL);
             break;
         }
         case (OFPP_FLOOD):

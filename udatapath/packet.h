@@ -46,22 +46,24 @@
 struct datapath;
 struct ofpbuf;
 
+
 struct packet {
+
     struct datapath    *dp;
     struct ofpbuf      *buffer;				/* buffer containing the packet */
 
-    struct action_set		  action_set;	/* action set associated with the packet */
-    struct packet_handle_std  handle_std;	/* handler for standard match structure */
+    struct action_set	action_set;			/* action set associated with the packet */
+    struct packet_handle_std  handle_std;		/* handler for standard match structure */
 
     uint32_t            in_port;
-    uint32_t            out_group;			/* OFPG_ANY = no out group */
     uint32_t            out_port;			/* OFPP_ANY = no out port */
+    uint32_t            out_group;			/* OFPG_ANY = no out group */
     uint32_t            out_queue;
     uint32_t            buffer_id;			/* if packet is stored in buffer, buffer_id; otherwise 0xffffffff */
 
     struct timeval	ts;
 
-    uint16_t            out_port_max_len;	/* max length to send, if out_port is OFPP_CONTROLLER */
+    uint16_t            out_port_max_len;		/* max length to send, if out_port is OFPP_CONTROLLER */
     uint8_t             table_id;			/* table in which is processed */
 
     bool                packet_out;			/* true if the packet arrived in a packet out msg */
