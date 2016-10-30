@@ -209,8 +209,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
         }
 
         /* skip through rest of VLAN tags */
-        while (eth_type == ETH_TYPE_VLAN ||
-               eth_type == ETH_TYPE_VLAN_PBB) {
+
+        while (eth_type == ETH_TYPE_VLAN || eth_type == ETH_TYPE_VLAN_PBB) {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct vlan_header))) {
                 return -1;
@@ -226,8 +226,10 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             };
         }
 
-        /* PBB ISID */
-        if (eth_type == ETH_TYPE_PBB){
+
+	switch(eth_type) {
+
+	case ETH_TYPE_PBB:  {
             uint32_t isid;
 		if (unlikely(pkt->buffer->size < offset + sizeof(struct pbb_header))) {
                 return -1;
@@ -243,8 +245,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             return 0;
         }
 
-        if (eth_type == ETH_TYPE_MPLS ||
-            eth_type == ETH_TYPE_MPLS_MCAST) {
+	case ETH_TYPE_MPLS:
+	case ETH_TYPE_MPLS_MCAST: {
             uint32_t mpls_label;
             uint32_t mpls_tc;
             uint32_t mpls_bos;
@@ -272,8 +274,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             return 0;
         }
 
-        /* ARP */
-        if (eth_type == ETH_TYPE_ARP) {
+	case ETH_TYPE_ARP: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct arp_eth_header))) {
                 return -1;
@@ -313,8 +314,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             return 0;
         }
-        /* Network Layer */
-        else if (eth_type == ETH_TYPE_IP) {
+
+	case ETH_TYPE_IP: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct ip_header))) {
                 return -1;
@@ -341,7 +342,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             }
             next_proto = proto->ipv4->ip_proto;
         }
-        else if (eth_type == ETH_TYPE_IPV6) {
+
+	case ETH_TYPE_IPV6: {
             uint32_t ipv6_fl;
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct ipv6_header))) {
@@ -372,9 +374,11 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             /*TODO: Check for extension headers*/
         }
+	}
 
-        /* Transport */
-        if (next_proto== IP_TYPE_TCP) {
+	switch (next_proto) {
+
+	case IP_TYPE_TCP: {
             uint16_t maskedFlags;
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct tcp_header))) {
@@ -397,7 +401,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             return 0;
         }
-        else if (next_proto == IP_TYPE_UDP) {
+	case IP_TYPE_UDP: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct udp_header))) {
                 return -1;
@@ -414,7 +418,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             return 0;
 
         }
-        else if (next_proto == IP_TYPE_ICMP) {
+	case IP_TYPE_ICMP: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct icmp_header))) {
                 return -1;
@@ -430,7 +434,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             return 0;
 
         }
-        else if (next_proto == IPV6_TYPE_ICMPV6) {
+	case IPV6_TYPE_ICMPV6: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct icmp_header))) {
                 return -1;
@@ -486,7 +490,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             return 0;
         }
-        else if (next_proto == IP_TYPE_SCTP) {
+	case IP_TYPE_SCTP: {
 
 	    if (unlikely(pkt->buffer->size < offset + sizeof(struct sctp_header))) {
                 return -1;
@@ -502,6 +506,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             return 0;
         }
+	}
 
         return -1;
 }
