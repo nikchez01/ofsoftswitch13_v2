@@ -112,8 +112,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 	    memcpy(info->eth_src, proto->eth->eth_src, ETH_ADDR_LEN);
 	    memcpy(info->eth_dst, proto->eth->eth_dst, ETH_ADDR_LEN);
 
-	    info->has_eth_src = true;
-	    info->has_eth_dst = true;
+	    oxm_set_valid(info,eth_src);
+	    oxm_set_valid(info,eth_dst);
 
             // ofl_structs_match_put_eth(m, OXM_OF_ETH_SRC, proto->eth->eth_src);
             // ofl_structs_match_put_eth(m, OXM_OF_ETH_DST, proto->eth->eth_dst);
@@ -165,8 +165,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 	    memcpy(info->eth_src, proto->eth->eth_src, ETH_ADDR_LEN);
 	    memcpy(info->eth_dst, proto->eth->eth_dst, ETH_ADDR_LEN);
 
-	    info->has_eth_src = true;
-	    info->has_eth_dst = true;
+	    oxm_set_valid(info, eth_src);
+	    oxm_set_valid(info, eth_dst);
 
             oxm_set_info(info, eth_type, eth_type);
 
@@ -296,10 +296,10 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                     ntohs(proto->arp->ar_op) == ARP_OP_REPLY) {
 
 		    memcpy(&info->arp_ar_sha, proto->arp->ar_sha, ETH_ADDR_LEN);
-		    info->has_arp_ar_sha = true;
+		    oxm_set_valid(info, arp_ar_sha);
 
 		    memcpy(&info->arp_ar_tha, proto->arp->ar_tha, ETH_ADDR_LEN);
-		    info->has_arp_ar_tha = true;
+		    oxm_set_valid(info, arp_ar_tha);
 
 		    oxm_set_info(info, arp_ar_spa, proto->arp->ar_spa);
 		    oxm_set_info(info, arp_ar_tpa, proto->arp->ar_tpa);
@@ -354,8 +354,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 	    memcpy(&info->ipv6_src, proto->ipv6->ipv6_src.s6_addr, IPv6_ADDR_LEN);
 	    memcpy(&info->ipv6_dst, proto->ipv6->ipv6_dst.s6_addr, IPv6_ADDR_LEN);
 
-	    info->has_ipv6_src = true;
-	    info->has_ipv6_dst = true;
+	    oxm_set_valid(info, ipv6_src);
+	    oxm_set_valid(info, ipv6_dst);
 
             // ofl_structs_match_put_ipv6(m, OXM_OF_IPV6_SRC, proto->ipv6->ipv6_src.s6_addr);
             // ofl_structs_match_put_ipv6(m, OXM_OF_IPV6_DST, proto->ipv6->ipv6_dst.s6_addr);
@@ -457,7 +457,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 offset += sizeof(struct ipv6_nd_header);
 
 		memcpy(info->ipv6_nd_target, nd->target_addr.s6_addr, IPv6_ADDR_LEN);
-		info->has_ipv6_nd_target = true;
+		oxm_set_valid(info, ipv6_nd_target);
 
                 // ofl_structs_match_put_ipv6(m, OXM_OF_IPV6_ND_TARGET, nd->target_addr.s6_addr);
 
@@ -468,7 +468,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 if(opt->type == ND_OPT_SLL){
 
                     memcpy(info->ipv6_nd_sll, ((uint8_t const *)pkt->buffer->data + offset + IPV6_ND_OPT_HD_LEN), ETH_ADDR_LEN);
-                    info->has_ipv6_nd_sll = true;
+		    oxm_set_valid(info, ipv6_nd_sll);
 
                     // ofl_structs_match_put_eth(m, OXM_OF_IPV6_ND_SLL, nd_sll);
                     offset += IPV6_ND_OPT_HD_LEN + ETH_ADDR_LEN;
@@ -476,7 +476,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 else if(opt->type == ND_OPT_TLL){
                     // uint8_t nd_tll[6];
                     memcpy(info->ipv6_nd_tll, ((uint8_t const *)pkt->buffer->data + offset + IPV6_ND_OPT_HD_LEN), ETH_ADDR_LEN);
-                    info->has_ipv6_nd_tll = true;
+		    oxm_set_valid(info, ipv6_nd_tll);
 
                     // ofl_structs_match_put_eth(m,OXM_OF_IPV6_ND_TLL, nd_tll);
                     offset += IPV6_ND_OPT_HD_LEN + ETH_ADDR_LEN;
@@ -523,30 +523,31 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     if(handle->valid)
         return;
 
-    if (handle->info.has_metadata)
+    if (oxm_has_valid(&handle->info, metadata))
     {
 	metadata = handle->info.metadata;
     }
 
-    if (handle->info.has_tunnel_id)
+    if (oxm_has_valid(&handle->info, tunnel_id))
     {
 	tunnel_id = handle->info.metadata;
     }
 
     #if BEBA_STATE_ENABLED != 0
 
-    if (handle->info.has_global_state)
+    if (oxm_has_valid(&handle->info, global_state))
     {
 	global_state = handle->info.global_state;
     }
 
-    if (handle->info.has_state)
+    if (oxm_has_valid(&handle->info, state))
     {
 	state = handle->info.state;
 	has_state = true;
     }
 
     #endif
+
 
     // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
     //     hash_int(OXM_OF_METADATA,0), &handle->pkt_match.match_fields){
@@ -582,7 +583,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 
     // ofl_structs_match_init(&handle->pkt_match);
 
-    oxm_reset_info(&handle->info);
+    oxm_reset_all(&handle->info);
 
     if (packet_parse(handle->pkt, &handle->info, &handle->proto) < 0)
         return;

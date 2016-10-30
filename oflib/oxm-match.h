@@ -312,79 +312,68 @@ struct oxm_field {
 #endif
 
 
-#define oxm_set_info(info, FIELD, VALUE) do { \
-	(info)->FIELD = (VALUE);              \
-	(info)->has_ ## FIELD = true;         \
+#define oxm_set_info(info, FIELD, VALUE) do {	\
+	(info)->FIELD = (VALUE);					\
+	(info)->valid |= HAS_VALID_ ## FIELD;		\
 } while (0)
 
 
-#define oxm_reset_info(info) memset(info, 0, offsetof(struct oxm_packet_info, metadata));
+#define oxm_has_valid(info, FIELD)		((info)->valid & (HAS_VALID_ ## FIELD))
+#define oxm_set_valid(info, FIELD)		((info)->valid |= (HAS_VALID_ ## FIELD))
+#define oxm_reset(info, FIELD)			((info)->valid &= ~(HAS_VALID_ ## FIELD))
 
+#define oxm_reset_all(info) ((info)->valid = 0)
 
-#define oxm_lookup_info(info, LEN, FIELD) ((info)->has_ ## FIELD ? ({ *LEN = sizeof((info)->FIELD); &(info->FIELD); }) : ({ *LEN = 0; NULL; }))
+#define oxm_lookup_info(info, LEN, FIELD) (oxm_has_valid(info, FIELD) ? ({ *LEN = sizeof((info)->FIELD); &(info->FIELD); }) : ({ *LEN = 0; NULL; }))
 
 
 struct oxm_packet_info {
 
-	bool	has_metadata;
-	bool	has_tunnel_id;
-	bool	has_state;
-	bool	has_global_state;
-	bool	has_in_port;
+#define	HAS_VALID_metadata				(1ULL << 0)
+#define	HAS_VALID_tunnel_id				(1ULL << 1)
+#define	HAS_VALID_state					(1ULL << 2)
+#define	HAS_VALID_global_state			(1ULL << 3)
+#define	HAS_VALID_in_port				(1ULL << 4)
+#define	HAS_VALID_pbb_isid				(1ULL << 5)
+#define	HAS_VALID_mpls_label			(1ULL << 6)
+#define	HAS_VALID_mpls_tc				(1ULL << 7)
+#define	HAS_VALID_mpls_bos				(1ULL << 8)
+#define	HAS_VALID_eth_type				(1ULL << 9)
+#define	HAS_VALID_eth_src				(1ULL << 10)
+#define	HAS_VALID_eth_dst				(1ULL << 11)
+#define	HAS_VALID_vlan_id				(1ULL << 12)
+#define	HAS_VALID_vlan_pcp				(1ULL << 13)
+#define	HAS_VALID_arp_ar_sha			(1ULL << 14)
+#define	HAS_VALID_arp_ar_tha			(1ULL << 15)
+#define	HAS_VALID_arp_ar_spa			(1ULL << 16)
+#define	HAS_VALID_arp_ar_tpa			(1ULL << 17)
+#define	HAS_VALID_arp_ar_op				(1ULL << 18)
+#define	HAS_VALID_ip_src				(1ULL << 19)
+#define	HAS_VALID_ip_dst				(1ULL << 20)
+#define	HAS_VALID_ip_proto				(1ULL << 21)
+#define	HAS_VALID_ip_ecn				(1ULL << 22)
+#define	HAS_VALID_ip_dscp				(1ULL << 23)
+#define	HAS_VALID_ipv6_src				(1ULL << 24)
+#define	HAS_VALID_ipv6_dst				(1ULL << 25)
+#define	HAS_VALID_ipv6_fl				(1ULL << 26)
+#define	HAS_VALID_ipv6_next_hd			(1ULL << 27)
+#define	HAS_VALID_ipv6_nd_target		(1ULL << 28)
+#define	HAS_VALID_ipv6_nd_sll			(1ULL << 29)
+#define	HAS_VALID_ipv6_nd_tll			(1ULL << 30)
+#define	HAS_VALID_tcp_src				(1ULL << 31)
+#define	HAS_VALID_tcp_dst				(1ULL << 32)
+#define	HAS_VALID_tcp_flags				(1ULL << 33)
+#define	HAS_VALID_udp_src				(1ULL << 34)
+#define	HAS_VALID_udp_dst				(1ULL << 35)
+#define	HAS_VALID_sctp_src				(1ULL << 36)
+#define	HAS_VALID_sctp_dst				(1ULL << 37)
+#define	HAS_VALID_icmp_type				(1ULL << 38)
+#define	HAS_VALID_icmp_code				(1ULL << 39)
+#define	HAS_VALID_icmp6_type			(1ULL << 40)
+#define	HAS_VALID_icmp6_code			(1ULL << 41)
 
-	bool	has_pbb_isid;
 
-	bool	has_mpls_label;
-	bool	has_mpls_tc;
-	bool	has_mpls_bos;
-
-	bool	has_eth_type;
-	bool	has_eth_src;
-	bool	has_eth_dst;
-
-	bool	has_vlan_id;
-	bool	has_vlan_pcp;
-
-	bool	has_arp_ar_sha;
-	bool	has_arp_ar_tha;
-	bool	has_arp_ar_spa;
-	bool	has_arp_ar_tpa;
-	bool	has_arp_ar_op;
-
-	bool	has_ip_src;
-	bool	has_ip_dst;
-	bool	has_ip_proto;
-	bool	has_ip_ecn;
-	bool	has_ip_dscp;
-
-	bool	has_ipv6_src;
-	bool	has_ipv6_dst;
-	bool	has_ipv6_fl;
-	bool	has_ipv6_next_hd;
-
-	bool	has_ipv6_nd_target;
-	bool	has_ipv6_nd_sll;
-	bool	has_ipv6_nd_tll;
-
-	bool	has_tcp_src;
-	bool	has_tcp_dst;
-	bool	has_tcp_flags;
-
-	bool	has_udp_src;
-	bool	has_udp_dst;
-
-	bool	has_sctp_src;
-	bool	has_sctp_dst;
-
-	bool	has_icmp_type;
-	bool	has_icmp_code;
-
-	bool	has_icmp6_type;
-	bool	has_icmp6_code;
-
-	/* --------------------------------------------- */
-        /* note: the first meta field must be metadata   */
-	/* --------------------------------------------- */
+	unsigned long long valid;
 
 	uint64_t	metadata;
 	uint64_t	tunnel_id;
@@ -392,24 +381,9 @@ struct oxm_packet_info {
 	uint32_t	global_state;
 	uint32_t	in_port;
 
-	uint32_t	pbb_isid;
-
-	uint32_t	mpls_label;
-	uint32_t	mpls_tc;
-	uint32_t	mpls_bos;
-
 	uint16_t	eth_type;
 	uint8_t		eth_src[ETH_ADDR_LEN];
 	uint8_t		eth_dst[ETH_ADDR_LEN];
-
-	uint16_t	vlan_id;
-	uint8_t		vlan_pcp;
-
-	uint64_t	arp_ar_sha;
-	uint64_t	arp_ar_tha;
-	uint32_t	arp_ar_spa;
-	uint32_t	arp_ar_tpa;
-	uint16_t	arp_ar_op;
 
 	union
 	{
@@ -469,6 +443,20 @@ struct oxm_packet_info {
 		};
 	};
 
+	uint32_t	pbb_isid;
+
+	uint32_t	mpls_label;
+	uint32_t	mpls_tc;
+	uint32_t	mpls_bos;
+
+	uint16_t	vlan_id;
+	uint8_t		vlan_pcp;
+
+	uint64_t	arp_ar_sha;
+	uint64_t	arp_ar_tha;
+	uint32_t	arp_ar_spa;
+	uint32_t	arp_ar_tpa;
+	uint16_t	arp_ar_op;
 };
 
 /* All the known fields. */
