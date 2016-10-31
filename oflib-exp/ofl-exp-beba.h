@@ -286,6 +286,7 @@ struct state_table {
     struct state_entry          default_state_entry;
     struct state_entry          null_state_entry;
     struct state_entry *        last_lookup_state_entry;
+    struct state_entry *        last_update_state_entry;
     bool                        update_scope_is_eq_lookup_scope;
     bool                        bit_update_scope_is_eq_lookup_scope;
     uint8_t stateful;
@@ -331,7 +332,7 @@ struct state_entry *
 state_table_lookup(struct state_table*, struct packet *);
 
 struct state_entry *
-state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, struct key_extractor* key_extract);
+state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, struct key_extractor* key_extract, bool with_lookup_scope);
 
 void
 state_table_write_state_header(struct state_entry *, struct ofl_match_tlv *);
@@ -373,7 +374,7 @@ void
 state_table_timeout(struct state_table *table);
 
 bool
-retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, char * operand_name, struct state_table *table, struct packet *pkt, struct key_extractor *extractor, bool can_use_cached_state_entry);
+retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, char * operand_name, struct state_table *table, struct packet *pkt, struct key_extractor *extractor, bool with_lookup_scope);
 
 ofl_err
 state_table_set_condition(struct state_table *table, struct ofl_exp_set_condition *p);
@@ -382,7 +383,7 @@ void
 state_table_set_data_variable(struct state_table *table, struct ofl_exp_action_set_data_variable *act, struct packet *pkt);
 
 ofl_err
-state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *p);
+state_table_set_flow_data_variable(struct state_table *table, struct packet *pkt, struct ofl_exp_set_flow_data_variable *msg, uint8_t data_variable_id, uint32_t data_variable_value);
 
 ofl_err
 state_table_set_header_field_extractor(struct state_table *table, struct ofl_exp_set_header_field_extractor *hfe);

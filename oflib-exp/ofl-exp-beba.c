@@ -270,7 +270,7 @@ ofl_structs_set_condition_unpack(struct ofp_exp_set_condition const *src, size_t
             return error;
 
         // operand_2 can be FLOW_DATA_VAR, GLOBAL_DATA_VAR or HEADER_FIELD
-        error = check_operands((src->operand_types>>4)&3,src->operand_2,"operand_21",false,true);
+        error = check_operands((src->operand_types>>4)&3,src->operand_2,"operand_2",false,true);
         if (error)
             return error;
 
@@ -2254,6 +2254,7 @@ struct state_table *state_table_create(void) {
         table->null_state_entry.flow_data_var[i] = 0;
 
     table->last_lookup_state_entry = NULL;
+    table->last_update_state_entry = NULL;
     table->update_scope_is_eq_lookup_scope = false;
     table->bit_update_scope_is_eq_lookup_scope = false;
 
@@ -2354,7 +2355,7 @@ state_table_flush(struct state_table *table) {
 }
 
 bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, char *operand_name,
-                      struct state_table *table, struct packet *pkt, struct key_extractor *extractor, bool can_use_cached_state_entry) {
+                      struct state_table *table, struct packet *pkt, struct key_extractor *extractor, bool with_lookup_scope) {
     // Operands IDs validity has been already checked at unpack time
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *state_entry;
@@ -2362,11 +2363,17 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
 
     switch (operand_type) {
         case OPERAND_TYPE_FLOW_DATA_VAR: {
-            if (can_use_cached_state_entry && table->last_lookup_state_entry != NULL) {
+            if (with_lookup_scope && table->last_lookup_state_entry != NULL) {
+                OFL_LOG_DBG(LOG_MODULE, "Retrieving %s from lookup cache",operand_name);
                 state_entry = table->last_lookup_state_entry;
-            } else {
-                //TODO Davide: ok but if cached entry is NULL means either the lookup returns DEF or state cannot be extracted
-                state_entry = state_table_lookup_from_scope(table, pkt, extractor);
+            } else if (!with_lookup_scope && table->last_update_state_entry != NULL) {
+                OFL_LOG_DBG(LOG_MODULE, "Retrieving %s from update cache",operand_name);
+                state_entry = table->last_update_state_entry;
+            }
+            else {
+                //TODO Davide: ok but if cached entry is NULL it means either the lookup returns DEF or state cannot be extracted
+                // If we could distinguish between the two cases we could save another lookup in the first case.
+                state_entry = state_table_lookup_from_scope(table, pkt, extractor, with_lookup_scope);
             }
 
             if (state_entry->state == STATE_NULL) {
@@ -2460,7 +2467,7 @@ int state_table_evaluate_condition(struct state_table *state_table,struct packet
 }
 
 /*having the read_key, look for the state value inside the state_table */
-struct state_entry * state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, struct key_extractor* key_extract)
+struct state_entry * state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, struct key_extractor* key_extract, bool with_lookup_scope)
 {
     struct state_entry * e = NULL;
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
@@ -2476,7 +2483,7 @@ struct state_entry * state_table_lookup_from_scope(struct state_table* table, st
         hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
             if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
                 //TODO Davide: generalize for OFPSC_MAX_FLOW_DATA_VAR_NUM
-                OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u | %u %u %u %u",e->state,e->flow_data_var[0],e->flow_data_var[1],e->flow_data_var[2],e->flow_data_var[3]);
+                OFL_LOG_DBG(LOG_MODULE, "State Table lookup: state entry FOUND %u | %u %u %u %u",e->state,e->flow_data_var[0],e->flow_data_var[1],e->flow_data_var[2],e->flow_data_var[3]);
 
                 now = 1000000 * pkt->ts.tv_sec + pkt->ts.tv_usec;
 
@@ -2485,23 +2492,27 @@ struct state_entry * state_table_lookup_from_scope(struct state_table* table, st
 
                 e->last_used = now;
 
-                // cache the last state entry to avoid re-extracting it if two scopes are the same
-                table->last_lookup_state_entry = e; //TODO Davide: what if state_table_lookup_from_scope() is called for a data var update?
+                if (with_lookup_scope) {
+                    table->last_lookup_state_entry = e;
+                    if (table->update_scope_is_eq_lookup_scope) {
+                        table->last_update_state_entry = e;
+                    }
+                } else { 
+                    table->last_update_state_entry = e;
+                }
 
                 return e;
             }
     }
 
-    table->last_lookup_state_entry = NULL;
-
-    OFL_LOG_DBG(LOG_MODULE, "state entry NOT FOUND, returning DEFAULT");
+    OFL_LOG_DBG(LOG_MODULE, "State Table lookup: state entry NOT FOUND, returning DEFAULT");
     return &table->default_state_entry;
 }
 
 /*having the read_key, look for the state vaule inside the state_table */
 struct state_entry * state_table_lookup(struct state_table* table, struct packet *pkt)
 {
-    return state_table_lookup_from_scope(table, pkt, &table->lookup_key_extractor);
+    return state_table_lookup_from_scope(table, pkt, &table->lookup_key_extractor, true);
 }
 
 void state_table_write_state_header(struct state_entry *entry, struct ofl_match_tlv *f) {
@@ -2674,23 +2685,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
     int8_t coeff_2 = 0;
     int8_t coeff_3 = 0;
     int8_t coeff_4 = 0;
-    uint8_t key[OFPSC_MAX_KEY_LEN] = {0}; //used to access state table
-    int i;
     struct key_extractor *extractor=&table->update_key_extractor; //if not specified in the action, updates are done using the preconfigured update-scope
-    bool can_use_cached_state_entry = table->update_scope_is_eq_lookup_scope; //TODO Davide: call extractors_are_equal() for hardcoded update-scope
-
-    // If one of the operands or the output is a FLOW_DATA_VAR....
-    if ((((act->operand_types>>14)&3)==OPERAND_TYPE_FLOW_DATA_VAR) || (((act->operand_types>>12)&3)==OPERAND_TYPE_FLOW_DATA_VAR) || ((act->operand_types>>7)&1)==OPERAND_TYPE_FLOW_DATA_VAR 
-        || ( (act->opcode==OPCODE_AVG || act->opcode==OPCODE_VAR || act->opcode==OPCODE_EWMA || act->opcode==OPCODE_POLY_SUM) && (((act->operand_types>>10)&3)==OPERAND_TYPE_FLOW_DATA_VAR)) 
-        || ( (act->opcode==OPCODE_POLY_SUM) && (((act->operand_types>>8)&3)==OPERAND_TYPE_FLOW_DATA_VAR)) ) {
-
-        //TODO Davide: exploit state_table->last_lookup_state_entry (needs state_table_set_flow_data_variable() refactoring)
-        //TODO Davide: re-add hardcoded update scope
-        if(!__extract_key(key, extractor, pkt)){
-            OFL_LOG_DBG(LOG_MODULE, "update key fields not found in the packet's header");
-            return;
-        }
-    }
 
     // operand_types=aabbccdde0000000 where aa=operand_1_type, bb=operand_2_type, cc=operand_3_type, dd=operand_4_type and e=output_type
     if (!retrieve_operand(&operand_1_value, (act->operand_types>>14)&3, act->operand_1, "operand_1", table, pkt, extractor, false))
@@ -2853,15 +2848,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result1 is written in output
             switch((act->operand_types>>7)&1){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                     struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->output,
-                                  .key_len = extractor->key_len,
-                                  .value = result1,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->output, result1);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->output] = result1;
@@ -2874,15 +2861,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result1 is written in output
             switch((act->operand_types>>7)&1){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                    struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->output,
-                                  .key_len = extractor->key_len,
-                                  .value = result1,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->output, result1);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->output] = result1;
@@ -2893,15 +2872,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result2 is written in operand_2
             switch((act->operand_types>>12)&3){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                    struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->operand_2,
-                                  .key_len = extractor->key_len,
-                                  .value = result2,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->operand_2, result2);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->operand_2] = result2;
@@ -2914,15 +2885,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result1 is written in output
             switch((act->operand_types>>7)&1){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                    struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->output,
-                                  .key_len = extractor->key_len,
-                                  .value = result1,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->output, result1);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->output] = result1;
@@ -2933,15 +2896,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result2 is written in operand_2
             switch((act->operand_types>>12)&3){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                    struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->operand_2,
-                                  .key_len = extractor->key_len,
-                                  .value = result2,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->operand_2, result2);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->operand_2] = result2;
@@ -2952,15 +2907,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             //result3 is written in operand_3
             switch((act->operand_types>>10)&3){
                 case OPERAND_TYPE_FLOW_DATA_VAR:{
-                    struct ofl_exp_set_flow_data_variable p = (struct ofl_exp_set_flow_data_variable)
-                               {.table_id = pkt->table_id,
-                                  .flow_data_variable_id = act->operand_3,
-                                  .key_len = extractor->key_len,
-                                  .value = result3,
-                                  .mask = 0xFFFFFFFF,
-                                  .key = {}};
-                    memcpy(p.key, key, extractor->key_len);
-                    state_table_set_flow_data_variable(table,&p);
+                    state_table_set_flow_data_variable(table, pkt, NULL, act->operand_3, result3);
                     break;}
                 case OPERAND_TYPE_GLOBAL_DATA_VAR:{
                     table->global_data_var[act->operand_3] = result3;
@@ -2973,54 +2920,85 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
     }
 }
 
-/* Set-flow-data-variable ctrl msg */
-ofl_err state_table_set_flow_data_variable(struct state_table *table, struct ofl_exp_set_flow_data_variable *msg) {
-    //TODO Davide: should we update timeouts? Or we should update them only for set flow state??
-    //TODO Davide: merge with state_table_set_state()
-    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};   
+ofl_err state_table_set_flow_data_variable(struct state_table *table, struct packet *pkt, struct ofl_exp_set_flow_data_variable *msg, uint8_t data_variable_id, uint32_t data_variable_value)
+{
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *e;
     uint64_t now;
     struct timeval tv;
+    uint8_t flow_data_variable_id;
+    uint32_t value, mask;
     int i;
+    bool entry_found = 0;
 
-    //TODO Davide: exploit state_table->last_lookup_state_entry
-    if(table->update_key_extractor.key_len == msg->key_len)
-    {
+    if (msg) {
+        // SET_FLOW_DATA_VAR msg
+        flow_data_variable_id = msg->flow_data_variable_id;
+        value = msg->value;
+        mask = msg->mask;
+
+        if (table->update_key_extractor.key_len != msg->key_len) {
+            OFL_LOG_WARN(LOG_MODULE, "update key extractor length != received key length");
+            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+        }
+
         memcpy(key, msg->key, msg->key_len);
-    }
-    else
-    {
-        OFL_LOG_WARN(LOG_MODULE, "key extractor length != received key length");
-        return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
-    }
+    } else {        
+        // SET_DATA_VAR action
+        flow_data_variable_id = data_variable_id;
+        value = data_variable_value;
+        mask = 0xFFFFFFFF;
 
-    HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, 
-        hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
-            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
-                OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry found. Updating flow_data_var[%d]=%d",msg->flow_data_variable_id,(e->flow_data_var[msg->flow_data_variable_id] & ~(msg->mask)) | (msg->value & msg->mask));
-                e->flow_data_var[msg->flow_data_variable_id] = (e->flow_data_var[msg->flow_data_variable_id] & ~(msg->mask)) | (msg->value & msg->mask);
+        if (table->last_update_state_entry == NULL) {
+            if (!__extract_key(key, &table->update_key_extractor, pkt)) {
+                OFL_LOG_DBG(LOG_MODULE, "update key fields not found in the packet's header");
                 return 0;
             }
+        }
     }
 
-   
-    gettimeofday(&tv,NULL);
-    now = 1000000 * tv.tv_sec + tv.tv_usec;
-    e = xmalloc(sizeof(struct state_entry));
-    memset(e,0,sizeof(struct state_entry));
-    e->created = now;
-    e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
-    memset(e->stats,0,sizeof(struct ofl_exp_state_stats));
-    memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
-    e->state = STATE_DEFAULT;
-    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
-        e->flow_data_var[i]=0;
-    e->flow_data_var[msg->flow_data_variable_id] = msg->value & msg->mask;
+    if (table->last_update_state_entry != NULL) {
+        OFL_LOG_DBG(LOG_MODULE, "State Table update data variable: cached state entry FOUND in hash map");
+        entry_found = 1;
+        e = table->last_update_state_entry;
+    } else {
+        HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,
+                                hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries)
+        {
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)) {
+                OFL_LOG_DBG(LOG_MODULE, "State Table update data variable: state entry FOUND in hash map");
+                table->last_update_state_entry = e;
+                entry_found = 1;
+                break;
+            }
+        }
+    }
 
+    if (entry_found) {
+        OFL_LOG_DBG(LOG_MODULE, "State Table update data variable: updating flow_data_var[%d]=%d",flow_data_variable_id,(e->flow_data_var[flow_data_variable_id] & (~mask)) | (value & mask));
+        e->flow_data_var[flow_data_variable_id] = (e->flow_data_var[flow_data_variable_id] & (~mask)) | (value & mask);
+    } else {
+        // state entry is created only if the resulting entry is not a copy of the defult
+        if (value != 0) {
+            gettimeofday(&tv,NULL);
+            now = 1000000 * tv.tv_sec + tv.tv_usec;
+            e = xmalloc(sizeof(struct state_entry));
+            memset(e,0,sizeof(struct state_entry));
+            e->created = now;
+            e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
+            memset(e->stats,0,sizeof(struct ofl_exp_state_stats));
+            memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
+            e->state = STATE_DEFAULT;
+            for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++)
+                e->flow_data_var[i]=0;
+            e->flow_data_var[flow_data_variable_id] = value;
 
-    hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
-    OFL_LOG_DBG(LOG_MODULE, "Set flow data variable: state entry not found! A new state entry will be created with flow_data_var[%d]=%d",msg->flow_data_variable_id,e->flow_data_var[msg->flow_data_variable_id]);
-    
+            hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
+            OFL_LOG_DBG(LOG_MODULE, "State Table update data variable: creating a new state entry with flow_data_var[%d]=%d",flow_data_variable_id,e->flow_data_var[flow_data_variable_id]);
+
+            table->last_update_state_entry = e;
+        }
+    }
     return 0;
 }
 
@@ -3099,14 +3077,14 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
     */
     if (entry_to_update_is_cached) {
         e = table->last_lookup_state_entry;
-        OFL_LOG_DBG(LOG_MODULE, "cached state entry FOUND in hash map");
+        OFL_LOG_DBG(LOG_MODULE, "State Table update state: cached state entry FOUND in hash map");
         entry_found = 1;
     } else {
         HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,
                                 hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries)
         {
             if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)) {
-                OFL_LOG_DBG(LOG_MODULE, "state entry FOUND in hash map");
+                OFL_LOG_DBG(LOG_MODULE, "State Table update state: state entry FOUND in hash map");
                 entry_found = 1;
                 break;
             }
@@ -3131,13 +3109,13 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
             e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
             memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
             hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
-            OFL_LOG_DBG(LOG_MODULE, "state entry CREATED is hash map");
+            OFL_LOG_DBG(LOG_MODULE, "State Table update state: state entry CREATED in hash map");
         }
     }
 
     if (entry_found || entry_created) {
 
-        OFL_LOG_DBG(LOG_MODULE, "executing state transition to %u", new_state);
+        OFL_LOG_DBG(LOG_MODULE, "State Table update state: executing state transition to %u", new_state);
 
         e->state = new_state;
 
@@ -3146,7 +3124,7 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
 
         // Update timeouts, only if rollback state != current state
         if (hard_timeout > 0 && hard_rollback != new_state) {
-            OFL_LOG_DBG(LOG_MODULE, "configuring hard_timeout = %u", hard_timeout);
+            OFL_LOG_DBG(LOG_MODULE, "State Table update state: configuring hard_timeout = %u", hard_timeout);
             e->remove_at = now + hard_timeout;
             e->stats->hard_timeout = hard_timeout;
             e->stats->hard_rollback = hard_rollback;
@@ -3156,7 +3134,7 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
         }
 
         if (idle_timeout > 0 && idle_rollback != new_state) {
-            OFL_LOG_DBG(LOG_MODULE, "configuring idle_timeout = %u", idle_timeout);
+            OFL_LOG_DBG(LOG_MODULE, "State Table update state: configuring idle_timeout = %u", idle_timeout);
             e->stats->idle_timeout = idle_timeout;
             e->stats->idle_rollback = idle_rollback;
             e->last_used = now;
@@ -3377,7 +3355,7 @@ handle_state_mod(struct pipeline *pl, struct ofl_exp_msg_state_mod *msg,
             struct ofl_exp_set_flow_data_variable *p = (struct ofl_exp_set_flow_data_variable *) msg->payload;
             struct state_table *st = pl->tables[p->table_id]->state_table;
             if (state_table_is_enabled(st)){
-                return state_table_set_flow_data_variable(st, p);
+                return state_table_set_flow_data_variable(st, NULL, p, 0, 0);
             }
             else{
                 OFL_LOG_WARN(LOG_MODULE, "ERROR STATE MOD at stage %u: stage not stateful or not configured", p->table_id);

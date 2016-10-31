@@ -171,6 +171,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
+            table->state_table->last_lookup_state_entry = NULL;
+            table->state_table->last_update_state_entry = NULL;
             state_entry = state_table_lookup(table->state_table, pkt);
 
             if (state_hdr == NULL) {
