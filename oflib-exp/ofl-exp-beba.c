@@ -2402,18 +2402,19 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
             break;
         }
         case OPERAND_TYPE_GLOBAL_DATA_VAR: {
+            OFL_LOG_DBG(LOG_MODULE, "Retrieving %s",operand_name);
             *operand_value = (uint32_t) table->global_data_var[operand_id];
             break;
         }
         case OPERAND_TYPE_HEADER_FIELD: {
             if (table->header_field_extractor[operand_id].field_count != 1) {
-                OFL_LOG_DBG(LOG_MODULE, "SET DATA VAR action: header field exractor not configured (%s) (%u).",
+                OFL_LOG_DBG(LOG_MODULE,"Retrieving %s: header field exractor not configured (%u).",
                             operand_name, operand_id);
                 return false;
             }
 
             if (!__extract_key(key, &table->header_field_extractor[operand_id], pkt)) {
-                OFL_LOG_DBG(LOG_MODULE, "Header field not found in the packet's header -> NULL");
+                OFL_LOG_DBG(LOG_MODULE, "Retrieving %s: field not found in the packet's header -> NULL", operand_name);
                 return false;
             }
 
@@ -2447,15 +2448,19 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
 }
 
 int state_table_evaluate_condition(struct state_table *state_table,struct packet *pkt,struct condition_table_entry* condition_table_entry) {
+    if (condition_table_entry == NULL) {
+        return CONDITION_NULL;
+    }
+
     //Comparison is made by converting fields value to integers. Header field extractors always refer to field of length <=32 bit
     uint32_t operand_1_value = 0;
     uint32_t operand_2_value = 0;
     
     if (!retrieve_operand(&operand_1_value, condition_table_entry->operand_1_type, condition_table_entry->operand_1, "condition_operand_1", state_table, pkt, &state_table->lookup_key_extractor, true))
-        return -1;
+        return CONDITION_NULL;
 
     if (!retrieve_operand(&operand_2_value, condition_table_entry->operand_2_type, condition_table_entry->operand_2, "condition_operand_2", state_table, pkt, &state_table->lookup_key_extractor, true))
-        return -1;
+        return CONDITION_NULL;
 
     switch(condition_table_entry->condition){
         case CONDITION_GT:{
@@ -2477,10 +2482,10 @@ int state_table_evaluate_condition(struct state_table *state_table,struct packet
             OFL_LOG_DBG(LOG_MODULE, "condition=CONDITION_NEQ");
             return operand_1_value!=operand_2_value;}
         default:{
-            return -1;}
+            return CONDITION_NULL;}
         }
 
-    return -1;
+    return CONDITION_NULL;
 }
 
 /*having the read_key, look for the state value inside the state_table */
@@ -2535,6 +2540,11 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
 void state_table_write_state_header(struct state_entry *entry, struct ofl_match_tlv *f) {
     uint32_t *state = (uint32_t *) (f->value + EXP_ID_LEN);
     *state = entry->state;
+}
+
+void state_table_write_condition_header(uint8_t result, struct ofl_match_tlv *f) {
+    uint8_t *condition_result = (uint8_t *) (f->value + EXP_ID_LEN);
+    *condition_result = result;
 }
 
 ofl_err state_table_del_state(struct state_table *table, uint8_t *key, uint32_t len) {

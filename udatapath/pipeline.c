@@ -125,10 +125,9 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
     struct flow_table *table, *next_table;
     struct ofl_match_tlv *f;
     struct ofl_match_tlv *state_hdr = NULL;
+    struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
     bool gstate_set = false;
     int i = 0;
-    //TODO Davide: avoid re-generation at each call
-    uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
 
     if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
         char *pkt_str = packet_to_string(pkt);
@@ -151,7 +150,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
     next_table = pl->tables[0];
     while (next_table != NULL) {
         struct flow_entry *entry;
-        int condition_evaluation_result = 0;
+        uint8_t condition_evaluation_result = 0;
 
         VLOG_DBG_RL(LOG_MODULE, &rl, "trying table %u.", next_table->stats->table_id);
 
@@ -160,14 +159,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         next_table = NULL;
 
         /* BEBA EXTENSION BEGIN */
-
-        //TODO Davide: refactor with condition_hdr[]
-        //removes eventual old 'condition' virtual header field
-        for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std.match.match_fields){
-                hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
-            }
-        }
 
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
@@ -197,15 +188,16 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
             //Conditions evaluation
             for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                if (table->state_table->condition_table[i]!=NULL) {
-                    VLOG_DBG_RL(LOG_MODULE, &rl, "Evaluating condition %d.", i);
-                    condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
-                    if (condition_evaluation_result!=-1) {
-                        VLOG_DBG_RL(LOG_MODULE, &rl, "result = %d.", condition_evaluation_result);
-                        ofl_structs_match_exp_put8(&pkt->handle_std.match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
-                    }
-                }
+                condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
+
+                if (condition_hdr[i] == NULL) {
+                    struct oxm_field *f = &all_fields[i+8];
+                    condition_hdr[i] == ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
+                } else {
+                    state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
+                }              
             }
+
         } else {
             // FIXME: avoid matching on state on non-stateful stages.
             // hint: don't touch the packet, avoid installing flowmods that match on state.

@@ -450,8 +450,6 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     bool has_condition[OFPSC_MAX_CONDITIONS_NUM] = { false };
     int i = 0;
     uint32_t current_global_state = OFP_GLOBAL_STATE_DEFAULT;
-    //TODO Davide: try to avoid re-generation at each call
-    uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
     gettimeofday(&tv,NULL);
     timestamp = (1000000 * tv.tv_sec + tv.tv_usec)/1000; // timestamp in ms
 
@@ -480,7 +478,8 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     }
 
     for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &handle->match.match_fields){
+        struct oxm_field *field = &all_fields[i+8];
+        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(field->header,0), &handle->match.match_fields){
             condition[i] = *((uint8_t*) (f->value + EXP_ID_LEN));
             has_condition[i] = true;
         }
@@ -531,7 +530,8 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 
     for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
         if (has_condition[i]){
-            ofl_structs_match_exp_put8(&handle->match, conditions_OXM_array[i], 0xBEBABEBA, condition[i]);
+            struct oxm_field *f = &all_fields[i+8];
+            ofl_structs_match_exp_put8(&handle->match, f->header, 0xBEBABEBA, condition[i]);
         }
     }
 

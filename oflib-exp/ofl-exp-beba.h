@@ -12,6 +12,7 @@
 
 #define STATE_DEFAULT 0
 #define STATE_NULL UINT32_MAX
+#define CONDITION_NULL UINT8_MAX
 /**************************************************************************/
 /*                        experimenter messages ofl_exp                   */
 /**************************************************************************/
@@ -336,6 +337,9 @@ state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, str
 
 void
 state_table_write_state_header(struct state_entry *, struct ofl_match_tlv *);
+
+void
+state_table_write_condition_header(uint8_t result, struct ofl_match_tlv *f);
 
 bool
 extractors_are_equal(struct key_extractor *ke1, struct key_extractor *ke2);
