@@ -1064,7 +1064,7 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
 #endif
 
     /* cannot execute recvfrom over a tap device */
-    if (!strncmp(netdev->name, "tap", 3)) {
+    if (netdev->name[0] == 't' && !strncmp(netdev->name, "tap", 3)) {
         do {
             n_bytes = read(netdev->tap_fd, ofpbuf_tail(buffer),
                            (ssize_t)ofpbuf_tailroom(buffer));
