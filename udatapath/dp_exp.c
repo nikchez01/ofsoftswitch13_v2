@@ -131,7 +131,7 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                 struct ofl_exp_action_write_context_to_field *act = (struct ofl_exp_action_write_context_to_field *)action;
                 struct state_table *st = pkt->dp->pipeline->tables[pkt->table_id]->state_table;
                 struct ofl_action_set_field* set_field_act;
-                if (state_table_is_stateful(st) && state_table_is_configured(st)){
+                if (state_table_is_enabled(st)){
                     VLOG_DBG_RL(LOG_MODULE, &rl, "executing action WRITE CONTEXT TO FIELD at stage %u", pkt->table_id);
                     set_field_act = (struct ofl_action_set_field*) state_table_write_context_to_field(st, act, pkt);
                     if (set_field_act!=NULL){

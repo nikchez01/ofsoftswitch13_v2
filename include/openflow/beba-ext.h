@@ -62,7 +62,7 @@ OFP_ASSERT(sizeof(struct ofp_exp_instruction_in_switch_pkt_gen) == 24);
 enum ofp_exp_actions {
     OFPAT_EXP_SET_STATE,
     OFPAT_EXP_SET_GLOBAL_STATE,
-    OFPAT_EXP_INC_STATE
+    OFPAT_EXP_INC_STATE,
     OFPAT_EXP_SET_DATA_VAR,
     OFPAT_EXP_WRITE_CONTEXT_TO_FIELD
 };

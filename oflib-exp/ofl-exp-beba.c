@@ -1216,6 +1216,7 @@ ofl_exp_beba_act_to_string(struct ofl_action_header const *act)
             char *string = malloc(100);
             sprintf(string, "{inc_state=[table_id=\"%u\"]}", a->table_id);
             return string;
+        }
         case (OFPAT_EXP_SET_DATA_VAR):
         {
             struct ofl_exp_action_set_data_variable *a = (struct ofl_exp_action_set_data_variable *)ext;
@@ -2020,220 +2021,220 @@ ofl_error_beba_exp_type_print(FILE *stream, uint16_t exp_type) {
 
 /* Instruction expertimenter callback implementation */
 //TODO implement callbacks
-    int
-    ofl_exp_beba_inst_pack(struct ofl_instruction_header const *src, struct ofp_instruction *dst) {
+int
+ofl_exp_beba_inst_pack(struct ofl_instruction_header const *src, struct ofp_instruction *dst) {
 
-        struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) src;
-        struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
+    struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) src;
+    struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
 
-        switch (ext->instr_type) {
-            case OFPIT_IN_SWITCH_PKT_GEN: {
-                size_t total_len;
-                size_t len;
-                uint8_t *data;
-                size_t i;
+    switch (ext->instr_type) {
+        case OFPIT_IN_SWITCH_PKT_GEN: {
+            size_t total_len;
+            size_t len;
+            uint8_t *data;
+            size_t i;
 
-                struct ofl_exp_instruction_in_switch_pkt_gen *si = (struct ofl_exp_instruction_in_switch_pkt_gen *) src;
-                struct ofp_exp_instruction_in_switch_pkt_gen *di = (struct ofp_exp_instruction_in_switch_pkt_gen *) dst;
+            struct ofl_exp_instruction_in_switch_pkt_gen *si = (struct ofl_exp_instruction_in_switch_pkt_gen *) src;
+            struct ofp_exp_instruction_in_switch_pkt_gen *di = (struct ofp_exp_instruction_in_switch_pkt_gen *) dst;
 
-                OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_pack OFPIT_IN_SWITCH_PKT_GEN");
+            OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_pack OFPIT_IN_SWITCH_PKT_GEN");
 
+            //TODO may need to pass callbacks instead of NULL
+            total_len = sizeof(struct ofp_exp_instruction_in_switch_pkt_gen) +
+                        ofl_actions_ofp_total_len((struct ofl_action_header const **) si->actions, si->actions_num,
+                                                  NULL);
+
+            di->header.header.type = htons(src->type); //OFPIT_EXPERIMENTER
+            di->header.header.experimenter = htonl(exp->experimenter_id); //BEBA_VENDOR_ID
+            di->header.instr_type = htonl(ext->instr_type); //OFPIT_IN_SWITCH_PKT_GEN
+
+            di->header.header.len = htons(total_len);
+            memset(di->header.pad, 0x00, 4);
+
+            di->pkttmp_id = htons(si->pkttmp_id);
+            memset(di->header.pad, 0x00, 4);
+            data = (uint8_t *) dst + sizeof(struct ofp_exp_instruction_in_switch_pkt_gen);
+
+            for (i = 0; i < si->actions_num; i++) {
                 //TODO may need to pass callbacks instead of NULL
-                total_len = sizeof(struct ofp_exp_instruction_in_switch_pkt_gen) +
-                            ofl_actions_ofp_total_len((struct ofl_action_header const **) si->actions, si->actions_num,
-                                                      NULL);
-
-                di->header.header.type = htons(src->type); //OFPIT_EXPERIMENTER
-                di->header.header.experimenter = htonl(exp->experimenter_id); //BEBA_VENDOR_ID
-                di->header.instr_type = htonl(ext->instr_type); //OFPIT_IN_SWITCH_PKT_GEN
-
-                di->header.header.len = htons(total_len);
-                memset(di->header.pad, 0x00, 4);
-
-                di->pkttmp_id = htons(si->pkttmp_id);
-                memset(di->header.pad, 0x00, 4);
-                data = (uint8_t *) dst + sizeof(struct ofp_exp_instruction_in_switch_pkt_gen);
-
-                for (i = 0; i < si->actions_num; i++) {
-                    //TODO may need to pass callbacks instead of NULL
-                    len = ofl_actions_pack(si->actions[i], (struct ofp_action_header *) data, data, NULL);
-                    data += len;
-                }
-                return total_len;
+                len = ofl_actions_pack(si->actions[i], (struct ofp_action_header *) data, data, NULL);
+                data += len;
             }
-            default:
-                OFL_LOG_WARN(LOG_MODULE, "Trying to pack unknown instruction type.");
-                return 0;
+            return total_len;
         }
+        default:
+            OFL_LOG_WARN(LOG_MODULE, "Trying to pack unknown instruction type.");
+            return 0;
+    }
+}
+
+ofl_err
+ofl_exp_beba_inst_unpack(struct ofp_instruction const *src, size_t *len, struct ofl_instruction_header **dst) {
+
+    struct ofl_instruction_header *inst = NULL;
+    size_t ilen;
+    ofl_err error = 0;
+    struct ofp_instruction_experimenter_header *exp;
+    struct ofp_beba_instruction_experimenter_header *beba_exp;
+
+    OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_unpack");
+
+    if (*len < sizeof(struct ofp_instruction_experimenter_header)) {
+        OFL_LOG_WARN(LOG_MODULE, "Received EXPERIMENTER instruction has invalid length (%zu).", *len);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
     }
 
-    ofl_err
-    ofl_exp_beba_inst_unpack(struct ofp_instruction const *src, size_t *len, struct ofl_instruction_header **dst) {
+    exp = (struct ofp_instruction_experimenter_header *) src;
 
-        struct ofl_instruction_header *inst = NULL;
-        size_t ilen;
-        ofl_err error = 0;
-        struct ofp_instruction_experimenter_header *exp;
-        struct ofp_beba_instruction_experimenter_header *beba_exp;
+    if (*len < ntohs(exp->len)) {
+        OFL_LOG_WARN(LOG_MODULE, "Received instruction has invalid length (set to %u, but only %zu received).",
+                     ntohs(exp->len), *len);
+        return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_LEN);
+    }
+    ilen = ntohs(exp->len);
 
-        OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_unpack");
+    beba_exp = (struct ofp_beba_instruction_experimenter_header *) exp;
+    switch (ntohl(beba_exp->instr_type)) {
+        case OFPIT_IN_SWITCH_PKT_GEN: {
+            struct ofp_exp_instruction_in_switch_pkt_gen *si;
+            struct ofl_exp_instruction_in_switch_pkt_gen *di;
+            struct ofp_action_header *act;
+            size_t i;
 
-        if (*len < sizeof(struct ofp_instruction_experimenter_header)) {
-            OFL_LOG_WARN(LOG_MODULE, "Received EXPERIMENTER instruction has invalid length (%zu).", *len);
-            return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
-        }
+            di = (struct ofl_exp_instruction_in_switch_pkt_gen *) malloc(
+                    sizeof(struct ofl_exp_instruction_in_switch_pkt_gen));
+            di->header.header.experimenter_id = ntohl(exp->experimenter); //BEBA_VENDOR_ID
+            inst = (struct ofl_instruction_header *) di;
 
-        exp = (struct ofp_instruction_experimenter_header *) src;
+            if (ilen < sizeof(struct ofp_exp_instruction_in_switch_pkt_gen)) {
+                OFL_LOG_WARN(LOG_MODULE, "Received IN_SWITCH_PKT_GEN instruction has invalid length (%zu).", *len);
+                error = ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
+            }
 
-        if (*len < ntohs(exp->len)) {
-            OFL_LOG_WARN(LOG_MODULE, "Received instruction has invalid length (set to %u, but only %zu received).",
-                         ntohs(exp->len), *len);
-            return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_LEN);
-        }
-        ilen = ntohs(exp->len);
+            ilen -= sizeof(struct ofp_exp_instruction_in_switch_pkt_gen);
 
-        beba_exp = (struct ofp_beba_instruction_experimenter_header *) exp;
-        switch (ntohl(beba_exp->instr_type)) {
-            case OFPIT_IN_SWITCH_PKT_GEN: {
-                struct ofp_exp_instruction_in_switch_pkt_gen *si;
-                struct ofl_exp_instruction_in_switch_pkt_gen *di;
-                struct ofp_action_header *act;
-                size_t i;
+            si = (struct ofp_exp_instruction_in_switch_pkt_gen *) src;
 
-                di = (struct ofl_exp_instruction_in_switch_pkt_gen *) malloc(
-                        sizeof(struct ofl_exp_instruction_in_switch_pkt_gen));
-                di->header.header.experimenter_id = ntohl(exp->experimenter); //BEBA_VENDOR_ID
-                inst = (struct ofl_instruction_header *) di;
+            di->header.instr_type = ntohl(beba_exp->instr_type); //OFPIT_IN_SWITCH_PKT_GEN
+            di->pkttmp_id = ntohl(si->pkttmp_id);
 
-                if (ilen < sizeof(struct ofp_exp_instruction_in_switch_pkt_gen)) {
-                    OFL_LOG_WARN(LOG_MODULE, "Received IN_SWITCH_PKT_GEN instruction has invalid length (%zu).", *len);
-                    error = ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_LEN);
-                }
+            error = ofl_utils_count_ofp_actions((uint8_t *) si->actions, ilen, &di->actions_num);
+            if (error) {
+                break;
+            }
+            di->actions = (struct ofl_action_header **) malloc(
+                    di->actions_num * sizeof(struct ofl_action_header *));
 
-                ilen -= sizeof(struct ofp_exp_instruction_in_switch_pkt_gen);
-
-                si = (struct ofp_exp_instruction_in_switch_pkt_gen *) src;
-
-                di->header.instr_type = ntohl(beba_exp->instr_type); //OFPIT_IN_SWITCH_PKT_GEN
-                di->pkttmp_id = ntohl(si->pkttmp_id);
-
-                error = ofl_utils_count_ofp_actions((uint8_t *) si->actions, ilen, &di->actions_num);
+            act = si->actions;
+            for (i = 0; i < di->actions_num; i++) {
+                // TODO We may need to pass the ofl_exp callbacks instead of NULL
+                //error = ofl_actions_unpack(act, &ilen, &(di->actions[i]), exp);
+                error = ofl_actions_unpack(act, &ilen, &(di->actions[i]), NULL);
                 if (error) {
                     break;
                 }
-                di->actions = (struct ofl_action_header **) malloc(
-                        di->actions_num * sizeof(struct ofl_action_header *));
-
-                act = si->actions;
-                for (i = 0; i < di->actions_num; i++) {
-                    // TODO We may need to pass the ofl_exp callbacks instead of NULL
-                    //error = ofl_actions_unpack(act, &ilen, &(di->actions[i]), exp);
-                    error = ofl_actions_unpack(act, &ilen, &(di->actions[i]), NULL);
-                    if (error) {
-                        break;
-                    }
-                    act = (struct ofp_action_header *) ((uint8_t *) act + ntohs(act->len));
-                }
-
-                break;
+                act = (struct ofp_action_header *) ((uint8_t *) act + ntohs(act->len));
             }
-            default: {
-                struct ofl_instruction_experimenter *di;
-                di = (struct ofl_instruction_experimenter *) malloc(sizeof(struct ofl_instruction_experimenter));
-                di->experimenter_id = ntohl(exp->experimenter); //BEBA_VENDOR_ID
-                inst = (struct ofl_instruction_header *) di;
-                OFL_LOG_WARN(LOG_MODULE, "The received BEBA instruction type (%u) is invalid.",
-                             ntohs(beba_exp->instr_type));
-                error = ofl_error(OFPET_EXPERIMENTER, OFPET_BAD_EXP_INSTRUCTION);
-                break;
-            }
+
+            break;
         }
-
-        (*dst) = inst;
-
-        if (!error && ilen != 0) {
-            *len = *len - ntohs(src->len) + ilen;
-            OFL_LOG_WARN(LOG_MODULE, "The received instruction contained extra bytes (%zu).", ilen);
-            ofl_exp_beba_inst_free(inst);
-            return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+        default: {
+            struct ofl_instruction_experimenter *di;
+            di = (struct ofl_instruction_experimenter *) malloc(sizeof(struct ofl_instruction_experimenter));
+            di->experimenter_id = ntohl(exp->experimenter); //BEBA_VENDOR_ID
+            inst = (struct ofl_instruction_header *) di;
+            OFL_LOG_WARN(LOG_MODULE, "The received BEBA instruction type (%u) is invalid.",
+                         ntohs(beba_exp->instr_type));
+            error = ofl_error(OFPET_EXPERIMENTER, OFPET_BAD_EXP_INSTRUCTION);
+            break;
         }
-
-        *len -= ntohs(src->len);
-        return error;
     }
 
-    int
-    ofl_exp_beba_inst_free(struct ofl_instruction_header *i) {
-        struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
-        struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
-        struct ofl_exp_instruction_in_switch_pkt_gen *instr;
-        switch (ext->instr_type) {
-            case (OFPIT_IN_SWITCH_PKT_GEN): {
-                OFL_LOG_DBG(LOG_MODULE, "Freeing BEBA instruction IN_SWITCH_PKT_GEN.");
-                instr = (struct ofl_exp_instruction_in_switch_pkt_gen *) ext;
-                // TODO We may need to use OFL_UTILS_FREE_ARR_FUN2 and pass the ofl_exp callbacks instead of NULL
-                OFL_UTILS_FREE_ARR_FUN2(instr->actions, instr->actions_num,
-                                        ofl_actions_free, NULL);
-                free(instr);
-                OFL_LOG_DBG(LOG_MODULE, "Done.");
-                return 0;
-                break;
-            }
-            default: {
-                OFL_LOG_WARN(LOG_MODULE, "Unknown BEBA instruction type. Perhaps not freed correctly");
-            }
-        }
-        free(i);
-        return 1;
+    (*dst) = inst;
+
+    if (!error && ilen != 0) {
+        *len = *len - ntohs(src->len) + ilen;
+        OFL_LOG_WARN(LOG_MODULE, "The received instruction contained extra bytes (%zu).", ilen);
+        ofl_exp_beba_inst_free(inst);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
     }
 
-    size_t
-    ofl_exp_beba_inst_ofp_len(struct ofl_instruction_header const *i) {
-        struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
+    *len -= ntohs(src->len);
+    return error;
+}
 
-        struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
-        switch (ext->instr_type) {
-            case OFPIT_IN_SWITCH_PKT_GEN: {
-                struct ofl_exp_instruction_in_switch_pkt_gen *i = (struct ofl_exp_instruction_in_switch_pkt_gen *) ext;
-                OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_ofp_len");
-                // TODO We may need to pass the ofl_exp callbacks instead of NULL
+int
+ofl_exp_beba_inst_free(struct ofl_instruction_header *i) {
+    struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
+    struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
+    struct ofl_exp_instruction_in_switch_pkt_gen *instr;
+    switch (ext->instr_type) {
+        case (OFPIT_IN_SWITCH_PKT_GEN): {
+            OFL_LOG_DBG(LOG_MODULE, "Freeing BEBA instruction IN_SWITCH_PKT_GEN.");
+            instr = (struct ofl_exp_instruction_in_switch_pkt_gen *) ext;
+            // TODO We may need to use OFL_UTILS_FREE_ARR_FUN2 and pass the ofl_exp callbacks instead of NULL
+            OFL_UTILS_FREE_ARR_FUN2(instr->actions, instr->actions_num,
+                                    ofl_actions_free, NULL);
+            free(instr);
+            OFL_LOG_DBG(LOG_MODULE, "Done.");
+            return 0;
+            break;
+        }
+        default: {
+            OFL_LOG_WARN(LOG_MODULE, "Unknown BEBA instruction type. Perhaps not freed correctly");
+        }
+    }
+    free(i);
+    return 1;
+}
+
+size_t
+ofl_exp_beba_inst_ofp_len(struct ofl_instruction_header const *i) {
+    struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
+
+    struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
+    switch (ext->instr_type) {
+        case OFPIT_IN_SWITCH_PKT_GEN: {
+            struct ofl_exp_instruction_in_switch_pkt_gen *i = (struct ofl_exp_instruction_in_switch_pkt_gen *) ext;
+            OFL_LOG_DBG(LOG_MODULE, "ofl_exp_beba_inst_ofp_len");
+            // TODO We may need to pass the ofl_exp callbacks instead of NULL
 //              return sizeof(struct ofl_exp_beba_instr_header)
 //                      + ofl_actions_ofp_total_len(i->actions, i->actions_num, exp);
-                return sizeof(struct ofp_exp_instruction_in_switch_pkt_gen)
-                       +
-                       ofl_actions_ofp_total_len((struct ofl_action_header const **) i->actions, i->actions_num, NULL);
-            }
-            default:
-                OFL_LOG_WARN(LOG_MODULE, "Trying to len unknown BEBA instruction type.");
-                return 0;
+            return sizeof(struct ofp_exp_instruction_in_switch_pkt_gen)
+                   +
+                   ofl_actions_ofp_total_len((struct ofl_action_header const **) i->actions, i->actions_num, NULL);
+        }
+        default:
+            OFL_LOG_WARN(LOG_MODULE, "Trying to len unknown BEBA instruction type.");
+            return 0;
+    }
+}
+
+char *
+ofl_exp_beba_inst_to_string(struct ofl_instruction_header const *i) {
+    struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
+
+    char *str;
+    size_t str_size;
+    FILE *stream = open_memstream(&str, &str_size);
+
+    struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
+    switch (ext->instr_type) {
+        case (OFPIT_IN_SWITCH_PKT_GEN): {
+            OFL_LOG_DBG(LOG_MODULE, "Trying to print BEBA Experimenter instruction. Not implemented yet!");
+            fprintf(stream, "OFPIT{type=\"%u\"}", ext->instr_type);
+            break;
+        }
+        default: {
+            OFL_LOG_WARN(LOG_MODULE, "Trying to print unknown BEBA Experimenter instruction.");
+            fprintf(stream, "OFPIT{type=\"%u\"}", ext->instr_type);
         }
     }
 
-    char *
-    ofl_exp_beba_inst_to_string(struct ofl_instruction_header const *i) {
-        struct ofl_instruction_experimenter *exp = (struct ofl_instruction_experimenter *) i;
+    fclose(stream);
+    return str;
 
-        char *str;
-        size_t str_size;
-        FILE *stream = open_memstream(&str, &str_size);
-
-        struct ofl_exp_beba_instr_header *ext = (struct ofl_exp_beba_instr_header *) exp;
-        switch (ext->instr_type) {
-            case (OFPIT_IN_SWITCH_PKT_GEN): {
-                OFL_LOG_DBG(LOG_MODULE, "Trying to print BEBA Experimenter instruction. Not implemented yet!");
-                fprintf(stream, "OFPIT{type=\"%u\"}", ext->instr_type);
-                break;
-            }
-            default: {
-                OFL_LOG_WARN(LOG_MODULE, "Trying to print unknown BEBA Experimenter instruction.");
-                fprintf(stream, "OFPIT{type=\"%u\"}", ext->instr_type);
-            }
-        }
-
-        fclose(stream);
-        return str;
-
-    }
+}
 
 /*experimenter table functions*/
 
@@ -2267,7 +2268,7 @@ bool state_table_is_enabled(struct state_table *table) {
            && table->update_key_extractor.field_count != 0;
 }
 
-static void
+void
 state_table_configure_stateful(struct state_table *table, uint8_t stateful) {
     if (stateful != 0)
         table->stateful = 1;
@@ -2307,7 +2308,7 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
     return extracted_key_len == extractor->key_len;
 }
 
-static bool
+bool
 state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts) {
     if (entry->stats->idle_timeout != 0) {
         if (ts > entry->last_used + entry->stats->idle_timeout) {
@@ -2323,7 +2324,7 @@ state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts) {
     return false;
 }
 
-static bool
+bool
 state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts) {
     if (entry->stats->hard_timeout != 0) {
         if (ts > entry->remove_at) {
@@ -2368,7 +2369,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                 state_entry = state_table_lookup_from_scope(table, pkt, extractor);
             }
 
-            if (state_entry.state == STATE_NULL) {
+            if (state_entry->state == STATE_NULL) {
                 return false;
             } else {
                 //in case state_entry==DEFAULT ENTRY, flow_data_var are all set to 0
@@ -2417,11 +2418,9 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
             break;
         }
     }
-    OFL_LOG_DBG(LOG_MODULE, "%s_value=%"
-    PRIu32
-    "", operand_name, *operand_value);
+    OFL_LOG_DBG(LOG_MODULE, "%s_value=%"PRIu32"", operand_name, *operand_value);
     return true;
-}}
+}
 
 int state_table_evaluate_condition(struct state_table *state_table,struct packet *pkt,struct condition_table_entry* condition_table_entry) {
     //Comparison is made by converting fields value to integers. Header field extractors always refer to field of length <=32 bit
@@ -2464,7 +2463,7 @@ int state_table_evaluate_condition(struct state_table *state_table,struct packet
 struct state_entry * state_table_lookup_from_scope(struct state_table* table, struct packet *pkt, struct key_extractor* key_extract)
 {
     struct state_entry * e = NULL;
-    uint8_t key[MAX_STATE_KEY_LEN] = {0};
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     uint64_t now;
 
     if(!__extract_key(key, key_extract, pkt))
@@ -2474,8 +2473,8 @@ struct state_entry * state_table_lookup_from_scope(struct state_table* table, st
     }
 
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
-        hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
-            if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
+        hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries){
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)){
                 //TODO Davide: generalize for OFPSC_MAX_FLOW_DATA_VAR_NUM
                 OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u | %u %u %u %u",e->state,e->flow_data_var[0],e->flow_data_var[1],e->flow_data_var[2],e->flow_data_var[3]);
 
@@ -2502,7 +2501,7 @@ struct state_entry * state_table_lookup_from_scope(struct state_table* table, st
 /*having the read_key, look for the state vaule inside the state_table */
 struct state_entry * state_table_lookup(struct state_table* table, struct packet *pkt)
 {
-    return state_table_lookup_from_scope(table, pkt, &table->lookup_key_extractor, true);
+    return state_table_lookup_from_scope(table, pkt, &table->lookup_key_extractor);
 }
 
 void state_table_write_state_header(struct state_entry *entry, struct ofl_match_tlv *f) {
@@ -3104,9 +3103,9 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
         entry_found = 1;
     } else {
         HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,
-                                hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries)
+                                hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries)
         {
-            if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)) {
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)) {
                 OFL_LOG_DBG(LOG_MODULE, "state entry FOUND in hash map");
                 entry_found = 1;
                 break;
@@ -3130,8 +3129,8 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
             entry_created = 1;
             e = xmalloc(sizeof(struct state_entry));
             e->stats = xmalloc(sizeof(struct ofl_exp_state_stats));
-            memcpy(e->key, key, MAX_STATE_KEY_LEN);
-            hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0));
+            memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
+            hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
             OFL_LOG_DBG(LOG_MODULE, "state entry CREATED is hash map");
         }
     }
@@ -3185,7 +3184,7 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
 
 ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
 
-    uint8_t key[MAX_STATE_KEY_LEN] = {0};
+    uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *e;
     uint64_t now;
     ofl_err res = 0;
@@ -3199,9 +3198,9 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
         }
 
         HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,
-                                hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries)
+                                hash_bytes(key, OFPSC_MAX_KEY_LEN, 0), &table->state_entries)
         {
-            if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)) {
+            if (!memcmp(key, e->key, OFPSC_MAX_KEY_LEN)) {
                 e->state += (uint32_t) 1;
                 return 0;
             }
@@ -3221,8 +3220,8 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     e->stats->idle_rollback = 0;
     e->stats->hard_rollback = 0;
     e->state = (uint32_t) 1; // Initial condition
-    memcpy(e->key, key, MAX_STATE_KEY_LEN);
-    hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0));
+    memcpy(e->key, key, OFPSC_MAX_KEY_LEN);
+    hmap_insert(&table->state_entries, &e->hmap_node, hash_bytes(key, OFPSC_MAX_KEY_LEN, 0));
     return 0;
 }
 
@@ -3457,7 +3456,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
 {
     struct state_entry *entry;
     size_t  i;
-    uint32_t fields[MAX_EXTRACTION_FIELD_COUNT] = {0};
+    uint32_t fields[OFPSC_MAX_FIELD_COUNT] = {0};
     struct timeval tv;
     gettimeofday(&tv,NULL);
     uint64_t now = 1000000 * tv.tv_sec + tv.tv_usec;

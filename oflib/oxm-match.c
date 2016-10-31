@@ -563,23 +563,23 @@ parse_oxm_entry(struct ofl_match *match, const struct oxm_field *f, const void *
         case OFI_OXM_OF_IPV6_EXTHDR_W:
             ofl_structs_match_put16m(match, f->header, ntohs(*((uint16_t const*) value)),ntohs(*((uint16_t const*) mask)));
             return 0;
-    case OFI_OXM_EXP_STATE:
-	case OFI_OXM_EXP_STATE_W:
-	case OFI_OXM_EXP_GLOBAL_STATE:
-	case OFI_OXM_EXP_GLOBAL_STATE_W:
-    case OFI_OXM_EXP_CONDITION0:
-    case OFI_OXM_EXP_CONDITION1:
-    case OFI_OXM_EXP_CONDITION2:
-    case OFI_OXM_EXP_CONDITION3:
-    case OFI_OXM_EXP_CONDITION4:
-    case OFI_OXM_EXP_CONDITION5:
-    case OFI_OXM_EXP_CONDITION6:
-    case OFI_OXM_EXP_CONDITION7:
-    case OFI_OXM_EXP_TIMESTAMP:
-    case OFI_OXM_EXP_RANDOM:
-    case OFI_OXM_EXP_PKT_LEN:
-    case NUM_OXM_FIELDS:
-        NOT_REACHED();
+        case OFI_OXM_EXP_STATE:
+        case OFI_OXM_EXP_STATE_W:
+        case OFI_OXM_EXP_GLOBAL_STATE:
+        case OFI_OXM_EXP_GLOBAL_STATE_W:
+        case OFI_OXM_EXP_CONDITION0:
+        case OFI_OXM_EXP_CONDITION1:
+        case OFI_OXM_EXP_CONDITION2:
+        case OFI_OXM_EXP_CONDITION3:
+        case OFI_OXM_EXP_CONDITION4:
+        case OFI_OXM_EXP_CONDITION5:
+        case OFI_OXM_EXP_CONDITION6:
+        case OFI_OXM_EXP_CONDITION7:
+        case OFI_OXM_EXP_TIMESTAMP:
+        case OFI_OXM_EXP_RANDOM:
+        case OFI_OXM_EXP_PKT_LEN:
+        case NUM_OXM_FIELDS:
+            NOT_REACHED();
     }
     NOT_REACHED();
 }

@@ -258,7 +258,7 @@ struct key_extractor {
     uint8_t                     table_id;
     uint8_t                     bit;
     uint32_t                    field_count;
-    uint32_t                    fields[MAX_EXTRACTION_FIELD_COUNT];
+    uint32_t                    fields[OFPSC_MAX_FIELD_COUNT];
     uint32_t                    key_len;
 };
 
@@ -339,6 +339,15 @@ state_table_write_state_header(struct state_entry *, struct ofl_match_tlv *);
 bool
 extractors_are_equal(struct key_extractor *ke1, struct key_extractor *ke2);
 
+bool
+state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);
+
+bool
+state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts);
+
+bool
+state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);
+
 void
 state_table_flush(struct state_table *table);
 
@@ -364,7 +373,7 @@ void
 state_table_timeout(struct state_table *table);
 
 bool
-retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, char * operand_name, struct state_table *table, struct packet *pkt, struct key_extractor *extractor);
+retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t operand_id, char * operand_name, struct state_table *table, struct packet *pkt, struct key_extractor *extractor, bool can_use_cached_state_entry);
 
 ofl_err
 state_table_set_condition(struct state_table *table, struct ofl_exp_set_condition *p);
@@ -383,6 +392,15 @@ state_table_evaluate_condition(struct state_table *state_table,struct packet *pk
 
 struct ofl_action_set_field *
 state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt);
+
+/*void
+state_table_configure_stateful(struct state_table *table, uint8_t stateful);
+
+bool
+state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts);
+
+bool
+state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);*/
 
 /*experimenter message functions*/
 
@@ -619,6 +637,9 @@ pkttmp_table_create(struct datapath *dp);
 
 void
 pkttmp_table_destroy(struct pkttmp_table *table);
+
+void
+state_table_configure_stateful(struct state_table *table, uint8_t stateful);
 
 /* experimenter pkttmp entry functions */
 struct pkttmp_entry *

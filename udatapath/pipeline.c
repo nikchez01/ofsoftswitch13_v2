@@ -164,8 +164,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         //TODO Davide: refactor with condition_hdr[]
         //removes eventual old 'condition' virtual header field
         for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std->match.match_fields){
-                hmap_remove_and_shrink(&pkt->handle_std->match.match_fields,&f->hmap_node);
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std.match.match_fields){
+                hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
             }
         }
 
@@ -200,7 +200,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                     condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
                     if (condition_evaluation_result!=-1) {
                         VLOG_DBG_RL(LOG_MODULE, &rl, "result = %d.", condition_evaluation_result);
-                        ofl_structs_match_exp_put8(&pkt->handle_std->match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
+                        ofl_structs_match_exp_put8(&pkt->handle_std.match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
                     }
                 }
             }
