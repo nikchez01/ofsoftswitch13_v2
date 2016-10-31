@@ -27,6 +27,8 @@ lib_libopenflow_a_SOURCES = \
 	lib/flow.h \
 	lib/hash.c \
 	lib/hash.h \
+	lib/xxhash.c\
+	lib/xxhash.h \
 	lib/hmap.c \
 	lib/hmap.h \
 	lib/ipv6_util.c \

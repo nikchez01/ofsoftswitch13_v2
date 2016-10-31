@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "util.h"
+#include "xxhash.h"
 
 /* This is the public domain lookup3 hash by Bob Jenkins from
  * http://burtleburtle.net/bob/c/lookup3.c, modified for style. */
@@ -51,7 +52,13 @@
 uint32_t hash_words(const uint32_t *, size_t n_word, uint32_t basis);
 uint32_t hash_2words(uint32_t, uint32_t);
 uint32_t hash_3words(uint32_t, uint32_t, uint32_t);
-uint32_t hash_bytes(const void *, size_t n_bytes, uint32_t basis);
+
+static inline uint32_t
+hash_bytes(const void *p_, size_t n, uint32_t basis)
+{
+    (void)basis;
+    return XXH32(p_, n, 0xbadbabe);
+}
 
 static inline uint32_t hash_string(const char *s, uint32_t basis)
 {
