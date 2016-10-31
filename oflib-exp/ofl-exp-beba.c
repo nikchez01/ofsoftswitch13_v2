@@ -2341,12 +2341,29 @@ state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts) {
     return false;
 }
 
+bool
+can_be_flushed(struct state_entry *entry) {
+    int i;
+
+    if (entry->state != STATE_DEFAULT || entry->stats->hard_timeout > 0 || entry->stats->idle_timeout > 0) {
+        return false;
+    }
+
+    for(i=0;i<OFPSC_MAX_FLOW_DATA_VAR_NUM;i++) {
+        if (entry->flow_data_var[i] != 0) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 void
 state_table_flush(struct state_table *table) {
     struct state_entry *entry;
 
     HMAP_FOR_EACH(entry, struct state_entry, hmap_node, &table->state_entries){
-        if (entry->state == STATE_DEFAULT && entry->stats->hard_timeout == 0 && entry->stats->idle_timeout == 0) {
+        if (can_be_flushed(entry)) {
             hmap_remove(&table->state_entries, &entry->hmap_node);
             free(entry->stats);
             free(entry);

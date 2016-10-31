@@ -349,6 +349,9 @@ state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts);
 bool
 state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);
 
+bool
+can_be_flushed(struct state_entry *entry);
+
 void
 state_table_flush(struct state_table *table);
 
