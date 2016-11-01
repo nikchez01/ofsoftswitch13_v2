@@ -3238,7 +3238,14 @@ struct ofl_action_set_field * state_table_write_context_to_field(struct state_ta
     
     switch (act->src_type){
         case SOURCE_TYPE_FLOW_DATA_VAR:
-            state_entry = state_table_lookup(table, pkt);
+            if (table->last_lookup_state_entry != NULL) {
+                OFL_LOG_DBG(LOG_MODULE, "Retrieving flow context from lookup cache");
+                state_entry = table->last_lookup_state_entry;
+            } else {
+                //TODO Davide: ok but if cached entry is NULL it means either the lookup returns DEF or state cannot be extracted
+                // If we could distinguish between the two cases we could save another lookup in the first case.
+                state_entry = state_table_lookup(table, pkt);
+            }
             if(state_entry!=NULL){
                 src_value = state_entry->flow_data_var[act->src_id];
             } else {
@@ -3250,7 +3257,14 @@ struct ofl_action_set_field * state_table_write_context_to_field(struct state_ta
             src_value = table->global_data_var[act->src_id];
             break;
         case SOURCE_TYPE_STATE:
-            state_entry = state_table_lookup(table, pkt);
+            if (table->last_lookup_state_entry != NULL) {
+                OFL_LOG_DBG(LOG_MODULE, "Retrieving flow context from lookup cache");
+                state_entry = table->last_lookup_state_entry;
+            } else {
+                //TODO Davide: ok but if cached entry is NULL it means either the lookup returns DEF or state cannot be extracted
+                // If we could distinguish between the two cases we could save another lookup in the first case.
+                state_entry = state_table_lookup(table, pkt);
+            }
             if(state_entry!=NULL){
                 src_value = (uint32_t) state_entry->state;
             } else {
