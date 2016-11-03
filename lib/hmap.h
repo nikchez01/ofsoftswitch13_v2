@@ -174,7 +174,7 @@ hmap_remove(struct hmap *hmap, struct hmap_node *node)
 static inline struct hmap_node *
 hmap_next_with_hash__(const struct hmap_node *node, size_t hash)
 {
-    while (node != NULL && node->hash != hash) {
+    while (likely(node != NULL) && node->hash != hash) {
         node = node->next;
     }
     return CONST_CAST(struct hmap_node *, node);
@@ -211,7 +211,6 @@ hmap_next__(const struct hmap *hmap, size_t start)
         if (node) {
             return node;
         }
-        __builtin_prefetch(&hmap->buckets[i+1], 0, 1);
     }
     return NULL;
 }
