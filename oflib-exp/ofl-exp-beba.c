@@ -1771,8 +1771,8 @@ state_table_flush(struct state_table *table, uint64_t now_us)
 /*having the read_key, look for the state value inside the state_table */
 struct state_entry * state_table_lookup(struct state_table* table, struct packet *pkt)
 {
-    struct state_entry * e = NULL;
     uint8_t key[MAX_STATE_KEY_LEN] = {0};
+    struct state_entry * e = NULL;
     uint64_t now_us;
 
     if(!__extract_key(key, &table->lookup_key_extractor, pkt))
@@ -2363,7 +2363,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             (*stats)[(*stats_num)]->entry.state = entry->state;
             memcpy((*stats)[(*stats_num)]->entry.key, entry->key, extractor->key_len);
             (*stats)[(*stats_num)]->entry.key_len = extractor->key_len;
-            
+
             (*stats_num)++;
 
             if (delete_entries){
