@@ -1703,7 +1703,7 @@ void state_table_destroy(struct state_table *table)
 
 
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
-int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
+inline int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
 {
     int i, extracted_key_len = 0;
 
@@ -1711,12 +1711,12 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
         size_t length;
         void *field = oxm_match_lookup_info(&pkt->handle_std.info, extractor->fields[i], &length);
         if (field) {
-            memcpy(&buf[extracted_key_len], field, length);
+            memcpy(buf + extracted_key_len, field, length);
             extracted_key_len += length;
         }
     }
 
-    return (extracted_key_len == extractor->key_len) ? 1 : 0;
+    return extracted_key_len == extractor->key_len;
 }
 
 static bool
@@ -1784,6 +1784,7 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
         hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
             if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
+
                 OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u",e->state);
 
                 now_us = 1000000 * pkt->ts.tv_sec + pkt->ts.tv_usec;
@@ -1795,13 +1796,11 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
 
                 // cache the last state entry to avoid re-extracting it if two scopes are the same
                 table->last_lookup_state_entry = e;
-
                 return e;
             }
     }
 
     table->last_lookup_state_entry = NULL;
-
     OFL_LOG_DBG(LOG_MODULE, "state entry NOT FOUND, returning DEFAULT");
     return &table->default_state_entry;
 }
