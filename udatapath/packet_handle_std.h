@@ -85,6 +85,7 @@ void packet_handle_std_init(struct packet_handle_std *handle, struct packet *pkt
 	handle->pkt = pkt;
 
 	// hmap_init(&handle->pkt_match.match_fields);
+	oxm_reset_all(&handle->info);
 
 	handle->valid = false;
 	packet_handle_std_validate(handle);
@@ -102,9 +103,11 @@ packet_handle_std_create(struct packet *pkt)
 	handle->pkt = pkt;
 
 	// hmap_init(&handle->pkt_match.match_fields);
+	oxm_reset_all(&handle->info);
 
 	handle->valid = false;
 	packet_handle_std_validate(handle);
+
 	return handle;
 }
 
@@ -122,9 +125,11 @@ packet_handle_std_clone(struct packet *pkt, struct packet_handle_std *handle UNU
     clone->pkt = pkt;
 
     // hmap_init(&clone->pkt_match.match_fields);
+    oxm_reset_all(&clone->info);
 
     clone->valid = false;
     packet_handle_std_validate(clone);
+
     return clone;
 }
 
