@@ -477,7 +477,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 
     if (oxm_has_valid(&handle->info, tunnel_id))
     {
-	tunnel_id = handle->info.metadata;
+	tunnel_id = handle->info.tunnel_id;
     }
 
     #if BEBA_STATE_ENABLED != 0
