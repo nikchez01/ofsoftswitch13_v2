@@ -125,8 +125,6 @@ void
 pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 {
     struct flow_table *table, *next_table;
-    uint32_t *state_ptr = NULL;
-    bool gstate_set = false;
 
     if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
         char *pkt_str = packet_to_string(pkt);
@@ -161,50 +159,22 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         #if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
-
+            // Flow state.
             struct state_entry *state_entry;
             state_entry = state_table_lookup(table->state_table, pkt);
-
-            if (state_ptr == NULL) {
-                // Allocate state to packet headers (experimenter).
-
-                oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
-		state_ptr = &pkt->handle_std.info.state;
-
-		//
-                // state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.pkt_match, OXM_EXP_STATE, 0xBEBABEBA,
-                //                                         state_entry->state);
-
-            } else {
-                // Rewrite existing header.
-                // state_table_write_state_header(state_entry, state_ptr);
-                oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
-            }
-
-            //TODO save global state header field ptr
-            //
-
-            if (!gstate_set) {
-
-                if (oxm_has_valid(&pkt->handle_std.info, global_state)) {
-			uint32_t flags = pkt->handle_std.info.global_state;
-			flags = (flags & 0x00000000) | (pkt->dp->global_state);
-			oxm_set_info(&pkt->handle_std.info, global_state, flags);
-			gstate_set = true;
-		}
-
-                // // Append global states to packet headers.
-                // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node, hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.pkt_match.match_fields) {
-                //     uint32_t *flags = (uint32_t *) (f->value + EXP_ID_LEN);
-                //     *flags = (*flags & 0x00000000) | (pkt->dp->global_state);
-                //     gstate_set = true;
-                // }
+            oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
+            // Global state.
+            if (oxm_has_valid(&pkt->handle_std.info, global_state)) {
+                uint32_t flags = pkt->handle_std.info.global_state;
+                flags = (flags & 0x00000000) | (pkt->dp->global_state);
+                oxm_set_info(&pkt->handle_std.info, global_state, flags);
             }
         } else {
             // FIXME: avoid matching on state on non-stateful stages.
             // hint: don't touch the packet, avoid installing flowmods that match on state.
         }
         #endif
+
         /* BEBA EXTENSION END */
 
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
