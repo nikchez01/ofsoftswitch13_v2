@@ -147,6 +147,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
     }
 
     next_table = pl->tables[0];
+
     while (next_table != NULL) {
         struct flow_entry *entry;
 
@@ -160,8 +161,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         #if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
-            struct state_entry *state_entry;
 
+            struct state_entry *state_entry;
             state_entry = state_table_lookup(table->state_table, pkt);
 
             if (state_ptr == NULL) {
@@ -181,13 +182,16 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             }
 
             //TODO save global state header field ptr
+            //
+
             if (!gstate_set) {
 
-		uint32_t flags = pkt->handle_std.info.global_state;
-
-                flags = (flags & 0x00000000) | (pkt->dp->global_state);
-		oxm_set_info(&pkt->handle_std.info, global_state, flags);
-                gstate_set = true;
+                if (oxm_has_valid(&pkt->handle_std.info, global_state)) {
+			uint32_t flags = pkt->handle_std.info.global_state;
+			flags = (flags & 0x00000000) | (pkt->dp->global_state);
+			oxm_set_info(&pkt->handle_std.info, global_state, flags);
+			gstate_set = true;
+		}
 
                 // // Append global states to packet headers.
                 // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node, hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.pkt_match.match_fields) {

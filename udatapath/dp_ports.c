@@ -213,7 +213,7 @@ dp_hw_drv_init(struct datapath *dp)
 
 
 /* Runs a datapath packet through the pipeline, if the port is not set to down. */
-static void
+static inline void
 process_buffer(struct datapath *dp, struct sw_port *p, struct ofpbuf *buffer, struct timeval *tv)
 {
     struct packet pkt;
