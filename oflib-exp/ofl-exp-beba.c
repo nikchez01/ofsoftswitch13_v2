@@ -26,8 +26,7 @@ OFL_LOG_INIT(LOG_MODULE)
 /* functions used  by ofp_exp_msg_pkttmp_mod */
 static ofl_err
 ofl_structs_add_pkttmp_unpack(struct ofp_exp_add_pkttmp const *src, size_t *len, struct ofl_exp_add_pkttmp *dst) {
-    //int i;
-    //uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
+
     uint8_t *data = NULL;
 
     if( *len >= sizeof(struct ofp_exp_add_pkttmp) )
@@ -53,8 +52,6 @@ ofl_structs_add_pkttmp_unpack(struct ofp_exp_add_pkttmp const *src, size_t *len,
 
 static ofl_err
 ofl_structs_del_pkttmp_unpack(struct ofp_exp_del_pkttmp const *src, size_t *len, struct ofl_exp_del_pkttmp *dst) {
-    //int i;
-    //uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
 
     if( *len == sizeof(struct ofp_exp_del_pkttmp) )
     {
@@ -2113,7 +2110,7 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     if (!entry_to_update_is_cached) {
         if (!__extract_key(key, &table->update_key_extractor, pkt)) {
             OFL_LOG_DBG(LOG_MODULE, "update key fields not found in the packet's header");
-            return res;
+            return 0;
         }
 
         HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,
