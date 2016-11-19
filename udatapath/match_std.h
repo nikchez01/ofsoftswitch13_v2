@@ -46,10 +46,7 @@ bool
 match_std_overlap(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp);
 
 bool
-packet_match(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp);
-
-bool
-packet_match_pkt(struct ofl_match *a, struct oxm_packet_info *b, struct ofl_exp *exp);
+packet_match(struct ofl_match *a, struct oxm_packet_info *b, struct ofl_exp *exp);
 
 /* Returns true if match a matches match b, in a strict manner. */
 bool

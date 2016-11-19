@@ -186,7 +186,7 @@ bool packet_handle_std_match(struct packet_handle_std *handle, struct ofl_match 
             return false;
         }
     }
-    return packet_match_pkt(match, &handle->info, exp);
+    return packet_match(match, &handle->info, exp);
 }
 
 /* Converts the packet to a string representation */
