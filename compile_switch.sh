@@ -1,6 +1,6 @@
 clear
 sudo ./boot.sh
-sudo ./configure
+sudo ./configure --enable-ndebug
 sudo make
 sudo make install
 echo DONE!

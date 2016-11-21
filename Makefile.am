@@ -21,7 +21,7 @@ AM_CFLAGS = -Wstrict-prototypes
 
 if NDEBUG
 AM_CPPFLAGS += -DNDEBUG
-AM_CFLAGS += -fomit-frame-pointer
+AM_CFLAGS += -O3 -fomit-frame-pointer
 else
 AM_LDFLAGS = -export-dynamic
 endif
