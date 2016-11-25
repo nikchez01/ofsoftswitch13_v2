@@ -3538,12 +3538,12 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             aux+=1;
         }
 
+        state_entry_apply_hard_timeout(entry, now);
+        state_entry_apply_idle_timeout(entry, now);
+
         if(found && ((msg->get_from_state && msg->state == entry->state) || (!msg->get_from_state)))
         {
-            (*stats)[(*stats_num)] = malloc(sizeof(struct ofl_exp_state_stats));
-
-            state_entry_apply_hard_timeout(entry, now);
-            state_entry_apply_idle_timeout(entry, now);
+            (*stats)[(*stats_num)] = malloc(sizeof(struct ofl_exp_state_stats));           
 
             (*stats)[(*stats_num)]->entry.state = entry->state;
             (*stats)[(*stats_num)]->idle_timeout = entry->stats->idle_timeout;
