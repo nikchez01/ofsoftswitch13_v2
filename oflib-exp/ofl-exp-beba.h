@@ -250,7 +250,7 @@ struct ofl_exp_msg_notify_flow_change {
 };
 
 /*experimenter table functions*/
-int __extract_key(uint8_t *, struct key_extractor *, struct packet *);
+bool __extract_key(uint8_t *, struct key_extractor *, struct packet *);
 
 struct state_table *
 state_table_create(void);

@@ -1700,7 +1700,8 @@ void state_table_destroy(struct state_table *table)
 
 
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
-inline int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
+inline bool
+__extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
 {
     int i, extracted_key_len = 0;
 
@@ -1711,9 +1712,12 @@ inline int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct p
             memcpy(buf + extracted_key_len, field, length);
             extracted_key_len += length;
         }
+	else {
+		return false;
+	}
     }
 
-    return extracted_key_len == extractor->key_len;
+    return true;
 }
 
 static bool
@@ -1779,7 +1783,8 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
     }
 
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
-        hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
+        hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries) {
+
             if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
 
                 OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u",e->state);
