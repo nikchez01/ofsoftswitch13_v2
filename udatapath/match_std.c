@@ -1,5 +1,6 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
  * Copyright (c) 2012, CPqD, Brazil
+ * Copyright (c) 2016, CNIT, Italy
  * Coprright (c) 2013, Ericsson AB, Ericsson Eurolab, Germany
  * All rights reserved.
  *

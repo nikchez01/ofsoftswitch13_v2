@@ -1,3 +1,8 @@
+// Copyright (c) 2016, CNIT, Italy
+// Copyright (c) 2016, NEC Laboratories Europe, Germany
+// Copyright (c) 2016, KTH, Sweden
+// Copyright (c) 2016, THALES Communications and Security, France
+// Copyright (c) 2016, CESNET, Czech Republic
 #ifndef BEBA_EXT_H
 #define BEBA_EXT_H 1
 

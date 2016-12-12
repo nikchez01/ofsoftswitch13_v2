@@ -1,4 +1,6 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
+ * Copyright (c) 2016, CNIT, Italy
+ * Copyright (c) 2016, CESNET, Czech Republic
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

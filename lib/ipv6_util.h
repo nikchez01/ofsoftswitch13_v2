@@ -1,3 +1,4 @@
+// Copyright (c) 2016, CNIT, Italy
 #ifndef IPV6_UTIL_H
 #define IPV6_UTIL_H 1
 

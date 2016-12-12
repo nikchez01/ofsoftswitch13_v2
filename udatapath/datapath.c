@@ -1,5 +1,7 @@
 /* Copyright (c) 2008, 2009 The Board of Trustees of The Leland Stanford
  * Junior University
+ * Copyright (c) 2016, CNIT, Italy
+ * Copyright (c) 2016, NEC Laboratories Europe, Germany
  *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
@@ -80,7 +82,7 @@ static void remote_wait(struct remote *);
 static void remote_destroy(struct remote *);
 
 
-#define MFR_DESC     "Stanford University, Ericsson Research and CPqD Research"
+#define MFR_DESC     "Stanford University, Ericsson Research, CPqD Research and BEBA EU Project Consortium"
 #define HW_DESC      "OpenFlow 1.3 Reference Userspace Switch"
 #define SW_DESC      __DATE__" "__TIME__
 #define DP_DESC      "OpenFlow 1.3 Reference Userspace Switch Datapath"

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012, CPqD, Brazil
+ * Copyright (c) 2016, CNIT, Italy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

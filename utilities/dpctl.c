@@ -1,5 +1,9 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
  * Copyright (c) 2012, CPqD, Brazil
+ * Copyright (c) 2016, CNIT, Italy
+ * Copyright (c) 2016, CESNET, Czech Republic
+ * Copyright (c) 2016, THALES Communications and Security, France
+ * Copyright (c) 2016, NEC Laboratories Europe, Germany
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

@@ -1,3 +1,6 @@
+// Copyright (c) 2016, CNIT, Italy
+// Copyright (c) 2016, NEC Laboratories Europe, Germany
+// Copyright (c) 2016, CESNET, Czech Republic
 /* OpenFlow: protocol between controller and datapath. */
 
 #ifndef OPENFLOW_OPENFLOW_H

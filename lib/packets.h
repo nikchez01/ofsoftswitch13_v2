@@ -1,5 +1,7 @@
 /* Copyright (c) 2008 The Board of Trustees of The Leland Stanford
  * Junior University
+ * Copyright (c) 2016, CNIT, Italy
+ * Copyright (c) 2016, CESNET, Czech Republic
  *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
