@@ -354,6 +354,7 @@ group_table_destroy(struct group_table *table) {
         group_entry_destroy(entry);
     }
 
+    free(table->features);
     free(table);
 }
 
