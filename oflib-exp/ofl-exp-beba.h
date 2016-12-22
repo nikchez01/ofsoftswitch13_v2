@@ -143,6 +143,7 @@ struct ofl_exp_state_stats {
     uint8_t                         table_id;      /* ID of table flow came from. */
     uint32_t                        duration_sec;  /* Time state entry has been alive in secs. */
     uint32_t                        duration_nsec; /* Time state entry has been alive in nsecs beyond duration_sec. */
+    //TODO Davide: we could avoid storing field_count and fields[] within each state entry (the controller already knows the lookup-scope!)
     uint32_t                        field_count;    /*number of extractor fields*/
     uint32_t                        fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/
     uint32_t                        hard_rollback;
@@ -345,9 +346,6 @@ bool
 extractors_are_equal(struct key_extractor *ke1, struct key_extractor *ke2);
 
 bool
-state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);
-
-bool
 state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts);
 
 bool
@@ -357,7 +355,7 @@ bool
 can_be_flushed(struct state_entry *entry);
 
 void
-state_table_flush(struct state_table *table);
+state_table_flush(struct state_table *table, uint64_t now_us);
 
 uint32_t
 compute_key_len(struct key_extractor *extractor);
@@ -401,14 +399,8 @@ state_table_evaluate_condition(struct state_table *state_table,struct packet *pk
 struct ofl_action_set_field *
 state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt);
 
-/*void
+ofl_err
 state_table_configure_stateful(struct state_table *table, uint8_t stateful);
-
-bool
-state_entry_apply_idle_timeout(struct state_entry *entry, uint64_t ts);
-
-bool
-state_entry_apply_hard_timeout(struct state_entry *entry, uint64_t ts);*/
 
 /*experimenter message functions*/
 
@@ -645,9 +637,6 @@ pkttmp_table_create(struct datapath *dp);
 
 void
 pkttmp_table_destroy(struct pkttmp_table *table);
-
-void
-state_table_configure_stateful(struct state_table *table, uint8_t stateful);
 
 /* experimenter pkttmp entry functions */
 struct pkttmp_entry *
