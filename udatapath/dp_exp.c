@@ -75,13 +75,14 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                     // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
                     state_table_set_state(st, pkt, NULL, wns, &ntf_message);
                     // FIXME: Sending this notification synchronously, potentially for each packet, is too expensive.
-                    // Enable it with ifdef condition.
-                    /* if (ntf_message.old_state != ntf_message.new_state) {
+                    #ifdef BEBA_STATE_NOTIFICATIONS
+                     if (ntf_message.old_state != ntf_message.new_state) {
                         int err = dp_send_message(pkt->dp, (struct ofl_msg_header *)&ntf_message, NULL);
                         if (err) {
                             VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR sending state change notification %s:%i", __FILE__, __LINE__);
                         }
-                    } */
+                    }
+					#endif
                 }
                 else
                 {
