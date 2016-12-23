@@ -307,6 +307,7 @@ struct ofl_exp_msg_notify_state_change {
     uint32_t state_mask;
     uint32_t key_len;
     uint8_t  key[OFPSC_MAX_KEY_LEN];
+    uint32_t flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM];
 };
 
 /* State Sync: Notify the controller about a flow change. */

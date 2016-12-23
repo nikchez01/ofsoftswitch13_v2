@@ -224,6 +224,7 @@ struct ofp_exp_msg_state_ntf {
     uint32_t state_mask;
     uint32_t key_len;
     uint8_t  key[OFPSC_MAX_KEY_LEN];  //TODO Davide: use flexible arrays to save space
+    uint32_t flow_data_var[OFPSC_MAX_FLOW_DATA_VAR_NUM];
 };
 
 /*

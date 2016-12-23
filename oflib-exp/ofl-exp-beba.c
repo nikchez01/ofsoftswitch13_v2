@@ -366,7 +366,7 @@ ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, siz
            struct ofl_exp_msg_notify_state_change *ntf = (struct ofl_exp_msg_notify_state_change *) exp_msg;
            struct ofp_exp_msg_state_ntf *ntf_msg;
 
-           *buf_len = sizeof(struct ofp_experimenter_header) + 5*sizeof(uint32_t) + ntf->key_len*sizeof(uint8_t); //sizeof(struct ofp_exp_msg_state_ntf);
+           *buf_len = sizeof(struct ofp_experimenter_header) + 5*sizeof(uint32_t) + ntf->key_len*sizeof(uint8_t) + OFPSC_MAX_FLOW_DATA_VAR_NUM * sizeof(uint32_t); //sizeof(struct ofp_exp_msg_state_ntf);
            *buf     = (uint8_t *)malloc(*buf_len);
 
            ntf_msg = (struct ofp_exp_msg_state_ntf *)(*buf);
@@ -379,6 +379,7 @@ ofl_exp_beba_msg_pack(struct ofl_msg_experimenter const *msg, uint8_t **buf, siz
            ntf_msg->state_mask = htonl(ntf->state_mask);
            ntf_msg->key_len = htonl(ntf->key_len);
            memcpy(ntf_msg->key, ntf->key, ntf->key_len);
+           memcpy(ntf_msg->flow_data_var, ntf->flow_data_var, OFPSC_MAX_FLOW_DATA_VAR_NUM * sizeof(uint32_t));
            return 0;
         }
         /* State Sync: Pack positive flow modification acknowledgment. */
@@ -598,7 +599,8 @@ ofl_exp_beba_msg_unpack(struct ofp_header const *oh, size_t *len, struct ofl_msg
             dm->state_mask = ntohl(sm->state_mask);
             dm->key_len = ntohl(sm->key_len);
             memcpy(dm->key, sm->key, dm->key_len);
-            *len -= 5*sizeof(uint32_t) + dm->key_len*sizeof(uint8_t);
+            memcpy(dm->flow_data_var, sm->flow_data_var, OFPSC_MAX_FLOW_DATA_VAR_NUM * sizeof(uint32_t));
+            *len -= 5*sizeof(uint32_t) + dm->key_len*sizeof(uint8_t) + OFPSC_MAX_FLOW_DATA_VAR_NUM * sizeof(uint32_t);
             return 0;
         }
         case (OFPT_EXP_FLOW_NOTIFICATION):
@@ -3216,8 +3218,10 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
                     .new_state = new_state,
                     .state_mask = state_mask,
                     .key_len = OFPSC_MAX_KEY_LEN,
-                    .key = {}};
+                    .key = {},
+                    .flow_data_var = {}};
     memcpy(ntf_message->key, e->key, ntf_message->key_len);
+    memcpy(ntf_message->flow_data_var, e->flow_data_var, OFPSC_MAX_FLOW_DATA_VAR_NUM * sizeof(uint32_t));
     #endif
 
     return res;
