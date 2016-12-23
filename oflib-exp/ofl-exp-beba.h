@@ -234,6 +234,7 @@ struct ofl_exp_action_set_data_variable {
     int8_t coeff_3;
     int8_t coeff_4;
     uint32_t field_count;
+    uint8_t bit;
     uint32_t fields[OFPSC_MAX_FIELD_COUNT];
 };
 
@@ -389,7 +390,7 @@ void
 state_table_set_data_variable(struct state_table *table, struct ofl_exp_action_set_data_variable *act, struct packet *pkt);
 
 ofl_err
-state_table_set_flow_data_variable(struct state_table *table, struct packet *pkt, struct ofl_exp_set_flow_data_variable *msg, uint8_t data_variable_id, uint32_t data_variable_value);
+state_table_set_flow_data_variable(struct state_table *table, struct packet *pkt, struct ofl_exp_set_flow_data_variable *msg, uint8_t data_variable_id, uint32_t data_variable_value, uint8_t bit);
 
 ofl_err
 state_table_set_header_field_extractor(struct state_table *table, struct ofl_exp_set_header_field_extractor *hfe);

@@ -136,7 +136,8 @@ struct ofp_exp_action_set_data_variable {
     int8_t coeff_3;
     int8_t coeff_4;
     uint32_t field_count;
-    uint8_t pad3[4];
+    uint8_t bit;
+    uint8_t pad3[3];
     uint32_t fields[0]; // variable number of fields (sizeof() ignores flexible arrays)
 };
 OFP_ASSERT(sizeof(struct ofp_exp_action_set_data_variable) == 40);
