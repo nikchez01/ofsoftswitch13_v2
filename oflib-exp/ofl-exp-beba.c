@@ -3216,7 +3216,7 @@ ofl_err state_table_set_state(struct state_table *table, struct packet *pkt,
         // all the statistics except timeouts and rollbacks are updated on request
     }
 
-    #ifdef BEBA_STATE_NOTIFICATIONS
+    #if BEBA_STATE_NOTIFICATIONS != 0
      *ntf_message = (struct ofl_exp_msg_notify_state_change)
             {{{{.type = OFPT_EXPERIMENTER},
                       .experimenter_id = BEBA_VENDOR_ID},
