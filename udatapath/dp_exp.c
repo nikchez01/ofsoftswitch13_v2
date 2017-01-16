@@ -75,13 +75,14 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                     // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
                     state_table_set_state(st, pkt, NULL, wns, &ntf_message);
                     // FIXME: Sending this notification synchronously, potentially for each packet, is too expensive.
-                    // Enable it with ifdef condition.
-                    /* if (ntf_message.old_state != ntf_message.new_state) {
+                    #ifdef BEBA_STATE_NOTIFICATIONS
+                     if (ntf_message.old_state != ntf_message.new_state) {
                         int err = dp_send_message(pkt->dp, (struct ofl_msg_header *)&ntf_message, NULL);
                         if (err) {
                             VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR sending state change notification %s:%i", __FILE__, __LINE__);
                         }
-                    } */
+                    }
+					#endif
                 }
                 else
                 {
@@ -255,10 +256,18 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                     err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &reply);
                     dp_send_message(dp, (struct ofl_msg_header *)&reply, sender);
                     if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
-                        // stats_num - 1 because default state entry must not be freed
-                        for (i = 0; i < reply.stats_num - 1; i++) {
-                            free(reply.stats[i]);
+                        if (!((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state ||
+                                (((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state && ((struct ofl_exp_msg_multipart_request_state *)msg)->state == STATE_DEFAULT)){
+                            // stats_num - 1 because default state entry must not be freed
+                            for (i = 0; i < reply.stats_num - 1; i++) {
+                                free(reply.stats[i]);
+                            }
+                        } else {
+                            for (i = 0; i < reply.stats_num; i++) {
+                                free(reply.stats[i]);
+                            }
                         }
+
                     }
                     free(reply.stats);
                     ofl_msg_free((struct ofl_msg_header *)msg, dp->exp);
