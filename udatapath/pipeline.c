@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
@@ -55,7 +56,7 @@
 
 #define LOG_MODULE VLM_pipeline
 
-static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1000, 1000);
+static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);
 
 static void
 execute_entry(struct pipeline *pl, struct flow_entry *entry,
@@ -124,9 +125,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 {
     struct flow_table *table, *next_table;
     struct ofl_match_tlv *f;
-    //struct ofl_match_tlv *state_hdr = NULL;
-    //struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
-    uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
+    struct ofl_match_tlv *state_hdr = NULL;
+    struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
     bool gstate_set = false;
     int i = 0;
 
@@ -167,39 +167,13 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             table->state_table->last_update_state_entry = NULL;
             state_entry = state_table_lookup(table->state_table, pkt);
 
-            //ANGELO
-            /*if (state_hdr == NULL) {
+            if (state_hdr == NULL) {
                 // Allocate state to packet headers (experimenter).
                 state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA,
                                                         state_entry->state);
             } else {
                 // Rewrite existing header.
                 state_table_write_state_header(state_entry, state_hdr);
-            }*/
-            // OLD CODE FROM OPP NOT OPTIMIZED
-            //removes eventual old 'state' virtual header field
-        
-            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                        hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
-                            hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
-            }
-
-            //ANGELO
-            if(state_entry!=NULL){
-                ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA, 0x0000);
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, 
-                    hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
-                    
-                    uint32_t *state = (uint32_t*) (f->value + EXP_ID_LEN);
-                    *state = (*state & 0x0000) | (state_entry->state);
-                }
-            }
-    
-            //removes eventual old 'condition' virtual header field
-            for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std.match.match_fields){
-                    hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
-                }
             }
 
             //TODO save global state header field ptr
@@ -213,27 +187,16 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 }
             }
 
-
-            //ANGELO
             //Conditions evaluation
             for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                /*condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
-                
+                condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
+
                 if (condition_hdr[i] == NULL) {
                     struct oxm_field *f = &all_fields[i+8]; //conditions in all_fields[] starts after 2 fields + 3 maskable fields
                     condition_hdr[i] = ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
                 } else {
                     state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
-                }*/  
-                //ANGELO
-                if (table->state_table->condition_table[i]!=NULL) {
-                    VLOG_DBG_RL(LOG_MODULE, &rl, "Evaluating condition %d.", i);
-                    condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
-                    if (condition_evaluation_result!=255) {
-                        VLOG_DBG_RL(LOG_MODULE, &rl, "result = %d.", condition_evaluation_result);
-                        ofl_structs_match_exp_put8(&pkt->handle_std.match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
-                    }
-                }
+                }              
             }
 
         } else {
@@ -358,10 +321,10 @@ pipeline_handle_flow_mod(struct pipeline *pl, struct ofl_msg_flow_mod *msg,
                 return error;
             }
         }
-	/* Reject goto in the last table. */
-	if ((msg->table_id == (PIPELINE_TABLES - 1))
-	    && (msg->instructions[i]->type == OFPIT_GOTO_TABLE))
-	  return ofl_error(OFPET_BAD_INSTRUCTION, OFPBIC_UNSUP_INST);
+    /* Reject goto in the last table. */
+    if ((msg->table_id == (PIPELINE_TABLES - 1))
+        && (msg->instructions[i]->type == OFPIT_GOTO_TABLE))
+      return ofl_error(OFPET_BAD_INSTRUCTION, OFPBIC_UNSUP_INST);
     }
 
     if (msg->table_id == 0xff) {
@@ -397,7 +360,7 @@ pipeline_handle_flow_mod(struct pipeline *pl, struct ofl_msg_flow_mod *msg,
 
             pkt = dp_buffers_retrieve(pl->dp->buffers, msg->buffer_id);
             if (pkt != NULL) {
-		      pipeline_process_packet(pl, pkt);
+              pipeline_process_packet(pl, pkt);
             } else {
                 VLOG_WARN_RL(LOG_MODULE, &rl, "The buffer flow_mod referred to was empty (%u).", msg->buffer_id);
             }
@@ -508,10 +471,10 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
      * ofl_structs_table_features_unpack(). Jean II */
     if(feat->table_features != NULL) {
         for(i = 0; i < feat->tables_num; i++){
-	    if(feat->table_features[i]->table_id >= PIPELINE_TABLES)
-	        return ofl_error(OFPET_TABLE_FEATURES_FAILED, OFPTFFC_BAD_TABLE);
-	    /* We may want to validate things like config, max_entries,
-	     * metadata... */
+        if(feat->table_features[i]->table_id >= PIPELINE_TABLES)
+            return ofl_error(OFPET_TABLE_FEATURES_FAILED, OFPTFFC_BAD_TABLE);
+        /* We may want to validate things like config, max_entries,
+         * metadata... */
         }
     }
 
@@ -521,14 +484,14 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
 
       /* We can only merge requests having the same XID. */
       if(sender->xid != sender->remote->mp_req_xid)
-	{
-	  VLOG_ERR(LOG_MODULE, "multipart request: wrong xid (0x%X != 0x%X)", sender->xid, sender->remote->mp_req_xid);
+    {
+      VLOG_ERR(LOG_MODULE, "multipart request: wrong xid (0x%X != 0x%X)", sender->xid, sender->remote->mp_req_xid);
 
-	  /* Technically, as our buffer can only hold one pending request,
-	   * this is a buffer overflow ! Jean II */
-	  /* Return error. */
-	  return ofl_error(OFPET_BAD_REQUEST, OFPBRC_MULTIPART_BUFFER_OVERFLOW);
-	}
+      /* Technically, as our buffer can only hold one pending request,
+       * this is a buffer overflow ! Jean II */
+      /* Return error. */
+      return ofl_error(OFPET_BAD_REQUEST, OFPBRC_MULTIPART_BUFFER_OVERFLOW);
+    }
 
       VLOG_DBG(LOG_MODULE, "multipart request: merging with previous fragments (%zu+%zu)", ((struct ofl_msg_multipart_request_table_features *) sender->remote->mp_req_msg)->tables_num, feat->tables_num);
 
@@ -537,7 +500,7 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
 
       /* Check if incomplete. */
       if(!nomore)
-	return 0;
+    return 0;
 
       VLOG_DBG(LOG_MODULE, "multipart request: reassembly complete (%zu)", ((struct ofl_msg_multipart_request_table_features *) sender->remote->mp_req_msg)->tables_num);
 
@@ -546,34 +509,34 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
 
 #if 0
       {
-	char *str;
-	str = ofl_msg_to_string((struct ofl_msg_header *) feat, pl->dp->exp);
-	VLOG_DBG(LOG_MODULE, "\nMerged request:\n%s\n\n", str);
-	free(str);
+    char *str;
+    str = ofl_msg_to_string((struct ofl_msg_header *) feat, pl->dp->exp);
+    VLOG_DBG(LOG_MODULE, "\nMerged request:\n%s\n\n", str);
+    free(str);
       }
 #endif
 
     } else {
       /* Check if the request is an initial fragment. */
       if(msg->flags & OFPMPF_REQ_MORE) {
-	struct ofl_msg_multipart_request_table_features* saved_msg;
+    struct ofl_msg_multipart_request_table_features* saved_msg;
 
-	VLOG_DBG(LOG_MODULE, "multipart request: create reassembly buffer (%zu)", feat->tables_num);
+    VLOG_DBG(LOG_MODULE, "multipart request: create reassembly buffer (%zu)", feat->tables_num);
 
-	/* Create a buffer the do reassembly. */
-	saved_msg = (struct ofl_msg_multipart_request_table_features*) xmalloc(sizeof(struct ofl_msg_multipart_request_table_features));
-	saved_msg->header.header.type = OFPT_MULTIPART_REQUEST;
-	saved_msg->header.type = OFPMP_TABLE_FEATURES;
-	saved_msg->header.flags = 0;
-	saved_msg->tables_num = 0;
-	saved_msg->table_features = NULL;
+    /* Create a buffer the do reassembly. */
+    saved_msg = (struct ofl_msg_multipart_request_table_features*) xmalloc(sizeof(struct ofl_msg_multipart_request_table_features));
+    saved_msg->header.header.type = OFPT_MULTIPART_REQUEST;
+    saved_msg->header.type = OFPMP_TABLE_FEATURES;
+    saved_msg->header.flags = 0;
+    saved_msg->tables_num = 0;
+    saved_msg->table_features = NULL;
 
-	/* Save the fragment for later use. */
-	ofl_msg_merge_multipart_request_table_features(saved_msg, feat);
-	sender->remote->mp_req_msg = (struct ofl_msg_multipart_request_header *) saved_msg;
-	sender->remote->mp_req_xid = sender->xid;
+    /* Save the fragment for later use. */
+    ofl_msg_merge_multipart_request_table_features(saved_msg, feat);
+    sender->remote->mp_req_msg = (struct ofl_msg_multipart_request_header *) saved_msg;
+    sender->remote->mp_req_xid = sender->xid;
 
-	return 0;
+    return 0;
       }
 
       /* Non fragmented request. Nothing to do... */
@@ -585,18 +548,18 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
     if(feat->table_features != NULL){
         int last_table_id = 0;
 
-	/* Check that the table features make sense. */
+    /* Check that the table features make sense. */
         for(i = 0; i < feat->tables_num; i++){
             /* Table-IDs must be in ascending order. */
             table_id = feat->table_features[i]->table_id;
             if(table_id < last_table_id) {
                 error = ofl_error(OFPET_TABLE_FEATURES_FAILED, OFPTFFC_BAD_TABLE);
-		break;
+        break;
             }
             /* Can't go over out internal max-entries. */
             if (feat->table_features[i]->max_entries > FLOW_TABLE_MAX_ENTRIES) {
                 error = ofl_error(OFPET_TABLE_FEATURES_FAILED, OFPTFFC_BAD_ARGUMENT);
-		break;
+        break;
             }
         }
 
@@ -604,7 +567,7 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
 
             /* Disable all tables, they will be selectively re-enabled. */
             for(table_id = 0; table_id < PIPELINE_TABLES; table_id++){
-	        pl->tables[table_id]->disabled = true;
+            pl->tables[table_id]->disabled = true;
             }
             /* Change tables configuration
                TODO: Remove flows*/
@@ -642,11 +605,11 @@ pipeline_handle_stats_request_table_features_request(struct pipeline *pl,
     for (i = 0; i < 8; i++){
         /* Skip disabled tables. */
         while((table_id < PIPELINE_TABLES) && (pl->tables[table_id]->disabled == true))
-	    table_id++;
-	/* Stop at the last table. */
-	if(table_id >= PIPELINE_TABLES)
-	    break;
-	/* Use that table in the reply. */
+        table_id++;
+    /* Stop at the last table. */
+    if(table_id >= PIPELINE_TABLES)
+        break;
+    /* Use that table in the reply. */
         features[i] = pl->tables[table_id]->features;
         table_id++;
     }
@@ -797,7 +760,7 @@ execute_entry(struct pipeline *pl, struct flow_entry *entry,
                 break;
             }
             case OFPIT_METER: {
-            	struct ofl_instruction_meter *im = (struct ofl_instruction_meter *)inst;
+                struct ofl_instruction_meter *im = (struct ofl_instruction_meter *)inst;
                 meter_table_apply(pl->dp->meters, pkt, im->meter_id);
                 break;
             }
