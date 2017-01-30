@@ -55,7 +55,7 @@
 
 #define LOG_MODULE VLM_pipeline
 
-static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);
+static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1000, 1000);
 
 static void
 execute_entry(struct pipeline *pl, struct flow_entry *entry,
@@ -124,8 +124,9 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 {
     struct flow_table *table, *next_table;
     struct ofl_match_tlv *f;
-    struct ofl_match_tlv *state_hdr = NULL;
-    struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
+    //struct ofl_match_tlv *state_hdr = NULL;
+    //struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
+    uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
     bool gstate_set = false;
     int i = 0;
 
@@ -166,13 +167,39 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             table->state_table->last_update_state_entry = NULL;
             state_entry = state_table_lookup(table->state_table, pkt);
 
-            if (state_hdr == NULL) {
+            //ANGELO
+            /*if (state_hdr == NULL) {
                 // Allocate state to packet headers (experimenter).
                 state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA,
                                                         state_entry->state);
             } else {
                 // Rewrite existing header.
                 state_table_write_state_header(state_entry, state_hdr);
+            }*/
+            // OLD CODE FROM OPP NOT OPTIMIZED
+            //removes eventual old 'state' virtual header field
+        
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                        hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
+                            hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
+            }
+
+            //ANGELO
+            if(state_entry!=NULL){
+                ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA, 0x0000);
+                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, 
+                    hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
+                    
+                    uint32_t *state = (uint32_t*) (f->value + EXP_ID_LEN);
+                    *state = (*state & 0x0000) | (state_entry->state);
+                }
+            }
+    
+            //removes eventual old 'condition' virtual header field
+            for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
+                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std.match.match_fields){
+                    hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
+                }
             }
 
             //TODO save global state header field ptr
@@ -186,16 +213,27 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 }
             }
 
+
+            //ANGELO
             //Conditions evaluation
             for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
-
+                /*condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
+                
                 if (condition_hdr[i] == NULL) {
                     struct oxm_field *f = &all_fields[i+8];
                     condition_hdr[i] == ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
                 } else {
                     state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
-                }              
+                }*/  
+                //ANGELO
+                if (table->state_table->condition_table[i]!=NULL) {
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "Evaluating condition %d.", i);
+                    condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
+                    if (condition_evaluation_result!=255) {
+                        VLOG_DBG_RL(LOG_MODULE, &rl, "result = %d.", condition_evaluation_result);
+                        ofl_structs_match_exp_put8(&pkt->handle_std.match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
+                    }
+                }
             }
 
         } else {
