@@ -220,8 +220,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 /*condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
                 
                 if (condition_hdr[i] == NULL) {
-                    struct oxm_field *f = &all_fields[i+8];
-                    condition_hdr[i] == ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
+                    struct oxm_field *f = &all_fields[i+8]; //conditions in all_fields[] starts after 2 fields + 3 maskable fields
+                    condition_hdr[i] = ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
                 } else {
                     state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
                 }*/  
