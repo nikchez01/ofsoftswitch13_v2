@@ -108,6 +108,7 @@ ofl_structs_extraction_unpack(struct ofp_exp_set_extractor const *src, size_t *l
         }
         dst->table_id = src->table_id;
         dst->field_count=ntohl(src->field_count);
+        dst->biflow = src->biflow;  //da surce a dst
         dst->bit = src->bit;
         for (i=0;i<dst->field_count;i++)
         {
@@ -209,6 +210,7 @@ ofl_structs_set_global_state_unpack(struct ofp_exp_set_global_state const *src, 
     return 0;
 }
 
+// LUCAAA
 static ofl_err
 ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor const *src, size_t *len, struct ofl_exp_set_header_field_extractor *dst) {
 
@@ -2311,28 +2313,172 @@ void state_table_destroy(struct state_table *table) {
     free(table);
 }
 
+// POI
+void swap_struct_biflow(struct struct_biflow *a, struct struct_biflow *b){
+    struct struct_biflow c;
+    c = *a;
+    *a = *b;
+    *b = c;
+}
+
+// POI
+// 1 = vero
+int a_min_b(struct struct_biflow *a, struct struct_biflow *b){
+    int cnt = 0;
+
+    for (cnt = 0; cnt < a->len; cnt++) {
+        if ((a->value)[cnt] != (b->value)[cnt]) { //se sono diversi
+            if ((a->value)[cnt] < (b->value)[cnt]) {    // se e minore
+                return 1; // interrompo appena trovo uno piu grande o piu piccolo se a < b return 1 (vero) devo fare lo swap
+            } else {
+                return 0;  // interrompo appena trovo uno piu grande o piu piccolo
+            }
+        }
+    }
+    return 0;
+}
+
+// POI
+// Ordino dal piu grande al piu piccolo in base ai type
+void selection_sort(struct struct_biflow *a, int field_count){
+    int i = 0, min, j, z;
+    int n = OFPSC_MAX_KEY_LEN;
+    
+    for(i=0; i < field_count; i++){
+        min = i;
+        for(j=i+1; j<n; j++){ 
+          if(a[j].type < a[min].type && a[j].type != 0){ 
+            min = j;
+            }
+        }
+        swap_struct_biflow(&a[min],&a[i]);
+    }
+
+    // Ordinamento dei gruppi in base al valore
+    i = 0;
+    while (i < field_count){
+
+        if(a[i].type == 0)  //quando trovo il primo elemento nn inizializzato termino l'ordinamento
+            return;
+
+        switch (a[i].type) {
+            case OXM_OF_ETH_DST:
+                if (a[i+1].type == OXM_OF_ETH_SRC) {
+                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_ETH_DST\n\n");
+                    // per ogni valore della chiave (si puo migliorare questo ordinamento)
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+            case OXM_OF_IPV4_SRC:
+                if (a[i+1].type == OXM_OF_IPV4_DST) {
+                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_IPV4_SRC\n\n");
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }                       
+                    i++;
+                }
+                break;
+            case OXM_OF_TCP_SRC:
+                if (a[i+1].type == OXM_OF_TCP_DST) {
+                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_TCP_SRC\n\n");
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }                       
+                    i++;
+                }
+                break;
+            case OXM_OF_UDP_SRC:
+                if (a[i+1].type == OXM_OF_UDP_DST) {
+                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_UDP_SRC\n\n");
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }                        
+                    i++;
+                }
+                break;
+            case OXM_OF_IPV6_SRC:
+                if (a[i+1].type == OXM_OF_IPV6_DST) {
+                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_ETH_SRC\n\n");
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }                        
+                    i++;
+                }
+                break;
+        }
+        i++;    //avanzo in ogni caso di 1, se sto in uno dei case invece anvanzo di 2 (1 prima e 1 ora)
+    }
+
+}
+
+// POI
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt) {
     int i;
     uint32_t extracted_key_len = 0;
     struct ofl_match_tlv *f;
+    struct struct_biflow xbiflow[OFPSC_MAX_KEY_LEN] = {0};
+    OFL_LOG_DBG(LOG_MODULE, "biflow value = %d", extractor->biflow);
 
-    for (i = 0; i < extractor->field_count; i++) {
-        uint32_t type = (int) extractor->fields[i];
-        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-            hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
-                if (type == f->header) {
-                    if (OXM_VENDOR(f->header)==0xFFFF){
-                        memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+    // if biflow
+    if(extractor->biflow){ 
+        for (i = 0; i < extractor->field_count; i++) {
+            uint32_t type = (int) extractor->fields[i];
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
+                    if (type == f->header) {
+                        if (OXM_VENDOR(f->header)==0xFFFF){
+                            // memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+                            xbiflow[i].type = f->header;
+                            xbiflow[i].value = f->value+EXP_ID_LEN;
+                            xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
+
+                        }
+                        else {
+                            // memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+                            xbiflow[i].type = f->header;
+                            xbiflow[i].value = f->value;
+                            xbiflow[i].len = (OXM_LENGTH(f->header));
+                        }
+                        // extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
+                        break;
                     }
-                    else {
-                        memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+            }
+        }        
+
+        //swap_struct_biflow(&xbiflow[0],&xbiflow[1]);
+        selection_sort(&xbiflow, extractor->field_count);
+        extracted_key_len = 0;
+
+        for (i=0; i<extractor->field_count; i++) {
+            memcpy(&buf[extracted_key_len], xbiflow[i].value, xbiflow[i].len);            
+            extracted_key_len = extracted_key_len + xbiflow[i].len;
+
+        }
+
+    // else not biflow (resta uguale)
+    } else {
+        for (i = 0; i < extractor->field_count; i++) {
+            uint32_t type = (int) extractor->fields[i];
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
+                    if (type == f->header) {
+                        if (OXM_VENDOR(f->header)==0xFFFF){
+                            memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+                        }
+                        else {
+                            memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+                        }
+                        extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
+                        break;
                     }
-                    extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
-                    break;
-                }
+            }
         }
     }
+
     /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
     return extracted_key_len == extractor->key_len;
 }
@@ -2699,6 +2845,7 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
         memcpy(table->default_state_entry.stats->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
     }
     dest->table_id = ke->table_id;
+    dest->biflow = ke->biflow;   // aggiunto la memorizzazione del campo nella struttura key
     dest->field_count = ke->field_count;
     dest->key_len = key_len;
     memcpy(dest->fields, ke->fields, sizeof(uint32_t) * ke->field_count);

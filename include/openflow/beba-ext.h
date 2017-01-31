@@ -247,7 +247,8 @@ struct ofp_exp_stateful_table_config {
 
 struct ofp_exp_set_extractor {
     uint8_t table_id;
-    uint8_t pad[3];
+    uint8_t biflow;  //aggiunto qui (era flag_L)
+    uint8_t pad[2];
     uint8_t bit;
     uint8_t pad2[3];
     uint32_t field_count;
