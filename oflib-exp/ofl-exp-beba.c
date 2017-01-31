@@ -1001,9 +1001,18 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                     break;
             }
 
+
             da->src_type = sa->src_type;
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
+
+            fprintf(stderr, "da->dst_field %d\n", da->dst_field);
+            fprintf(stderr, "OXM_OF_METADATA %d\n", OXM_OF_METADATA);
+            if(da->dst_field == OXM_OF_METADATA){
+                fprintf(stderr, "--------> Aaaaaaaaaa <--------");
+            }
+
+
 
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
@@ -1012,7 +1021,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             */
             //TODO Davide: what about METADATA? Should we need a dedicated WRITE CONTEXT TO METADATA? Maybe we can just remove the check below...
             if(da->dst_field == OXM_OF_IN_PORT || da->dst_field == OXM_OF_IN_PHY_PORT
-                                    || da->dst_field == OXM_OF_METADATA
+                                    // || da->dst_field == OXM_OF_METADATA  //Rimosso LUCA per test
                                     || da->dst_field == OXM_OF_IPV6_EXTHDR
                                     || da->dst_field == OXM_EXP_GLOBAL_STATE
                                     || da->dst_field == OXM_EXP_STATE
@@ -1027,6 +1036,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                                     || da->dst_field == OXM_EXP_TIMESTAMP
                                     || da->dst_field == OXM_EXP_RANDOM
                                     || da->dst_field == OXM_EXP_PKT_LEN){
+                    
                 
                 return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_SET_TYPE);
                 break;

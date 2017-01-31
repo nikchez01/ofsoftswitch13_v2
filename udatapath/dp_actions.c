@@ -387,6 +387,7 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 break;
             }
             case OXM_OF_MPLS_LABEL:{
+
                 struct mpls_header *mpls = pkt->handle_std.proto.mpls;
                 uint32_t v = *((uint32_t*) act->field->value);
                 mpls->fields = (mpls->fields & ~ntohl(MPLS_LABEL_MASK)) |
@@ -413,11 +414,31 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 break;
             }
             case OXM_OF_TUNNEL_ID :{
+                fprintf(stderr, "TESTTTTTTT\n" );
                 struct  ofl_match_tlv *f;
                 HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
                     hmap_node, hash_int(OXM_OF_TUNNEL_ID, 0), &(pkt)->handle_std.match.match_fields){
+                    fprintf(stderr, "TUNNEL = %"PRIu64"\n", *f->value);
                     uint64_t *tunnel_id = (uint64_t*) f->value;
                     *tunnel_id = *((uint64_t*) act->field->value);
+                    fprintf(stderr, "TUNNEL2 = %"PRIu64"\n", *f->value);
+                }
+                break;
+            }
+            case OXM_OF_METADATA:{
+                fprintf(stderr, "CIAO\n");
+                    struct  ofl_match_tlv *f;
+                    HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                    hmap_node, hash_int(OXM_OF_METADATA,0), &(pkt)->handle_std.match.match_fields){
+                    uint64_t *metadata = (uint64_t*) f->value;
+                    fprintf(stderr, "METADATA = %"PRIu64"\n", *metadata);
+                    *metadata = *((uint64_t*) act->field->value) & 0xFFFFFFFF;
+                    // *metadata = (*((uint64_t*)metadata) & 0xFFFFFFFF) | (htons(*((uint64_t*) act->field->value)) & 0xFFFFFFFF);
+                    fprintf(stderr, "METADATA2 = %"PRIu64"\n", *metadata);
+                    // fprintf(stderr, "AGGIUNTA METADATA %d\n", ((uint64_t*) act->field->value));
+                    // *metadata = (*metadata & 0xFFFFFFFF) | (htons(*((uint64_t*) act->field->value)) & 0xFFFFFFFF);
+                    // fprintf(stderr, "AGGIUNTA METADATA %d\n", (htons(*((uint64_t*) act->field->value))));
+                    VLOG_DBG_RL(LOG_MODULE, &rl, " -----> LUCAAA -----> Executing write metadata: %"PRIu64"", *metadata);
                 }
                 break;
             }
