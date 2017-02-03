@@ -3047,7 +3047,16 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             break;}
         case OPCODE_EWMA:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_EWMA");
-            //TODO Davide
+            // ewma( [last_ewma] , [current_sample] , [deltaT] )
+            // output = (1 - alpha)*current_sample + alpha(last_ewma)
+
+            // if deltaT < 1 s calculate ewma
+            if (operand_3_value<10000000) {
+                result1= (uint32_t) ((1 - 0.3)*operand_2_value + (0.3*operand_1_value));
+            // else result = current_sample
+            } else {
+                result1 = (uint32_t) operand_2_value;
+            }
             break;}
         case OPCODE_POLY_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_POLY_SUM");
