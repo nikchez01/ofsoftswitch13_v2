@@ -223,15 +223,23 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
             OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (%u).", src->extractor_id );
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
         }
+
+        fprintf(stderr, "KKKKKKKKKKK = %d\n", OXM_OF_METADATA);
+        // Tolto per test di un header field maggiore
+
         // header field extractor should be a field <=32 bit 
-        if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
-            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid header field size (%u).", OXM_LENGTH(ntohl(src->field)));
-            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_FIELD_SIZE);
-        }
+        // if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
+        //     OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid header field size (%u).", OXM_LENGTH(ntohl(src->field)));
+        //     return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_FIELD_SIZE);
+        // }
 
         dst->table_id = src->table_id;
         dst->extractor_id = src->extractor_id;
         dst->field = ntohl(src->field);
+
+        fprintf(stderr, "-----> dst->table_id = %d\n", dst->table_id);
+        fprintf(stderr, "-----> dst->extractor_id = %d\n", dst->extractor_id);
+        fprintf(stderr, "-----> dst->field = %d\n", dst->field);
     }
     else {
         //check of struct ofp_exp_set_header_field_extractor length.
@@ -445,6 +453,8 @@ check_operands(uint8_t operand_type, uint8_t operand_value, char * operand_name,
             break;
         case OPERAND_TYPE_HEADER_FIELD:
             if (allow_header_field){
+                // TOGLIERE
+                fprintf(stderr, "IF HEADER FIELD_LUCA\n" );
                 if (operand_value >= OFPSC_MAX_HEADER_FIELDS) {
                     OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid extractor id (%s) (%u).", operand_name, operand_value);
                     return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
@@ -874,7 +884,8 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
         }
         
         case (OFPAT_EXP_SET_DATA_VAR):
-        {
+        {   
+            fprintf(stderr, "SET_DATA_VAR\n" );
             // At unpack time we do NOT check if stage is stateful and state table is configured: those checks are run at action execution time
             struct ofp_exp_action_set_data_variable *sa;
             struct ofl_exp_action_set_data_variable *da;
@@ -1006,6 +1017,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
 
+            // TOGLIERE
             fprintf(stderr, "da->dst_field %d\n", da->dst_field);
             fprintf(stderr, "OXM_OF_METADATA %d\n", OXM_OF_METADATA);
             if(da->dst_field == OXM_OF_METADATA){
@@ -2564,6 +2576,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *state_entry;
     uint8_t field_len;
+    uint64_t operand_value64;
 
     switch (operand_type) {
         case OPERAND_TYPE_FLOW_DATA_VAR: {
@@ -2594,6 +2607,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
             break;
         }
         case OPERAND_TYPE_HEADER_FIELD: {
+
             if (table->header_field_extractor[operand_id].field_count != 1) {
                 OFL_LOG_DBG(LOG_MODULE,"Retrieving %s: header field exractor not configured (%u).",
                             operand_name, operand_id);
@@ -2606,10 +2620,17 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
             }
 
             field_len = OXM_LENGTH(table->header_field_extractor[operand_id].fields[0]);
+
             if (OXM_VENDOR(table->header_field_extractor[operand_id].fields[0]) == 0xffff) {
                 field_len -= EXP_ID_LEN;
             }
+
             switch (field_len) {
+                case 8: {
+                    memcpy(&operand_value64, key, 8);
+                    *operand_value = (uint32_t)operand_value64 & 0x0000ffff;
+                    break;
+                }
                 case 4: {
                     memcpy(operand_value, key, 4);
                     break;
@@ -2623,6 +2644,10 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                     break;
                 }
             }
+
+            fprintf(stderr, "operand_value = %d\n", *operand_value);
+
+
             break;
         }
         case OPERAND_TYPE_CONSTANT: {
@@ -2941,6 +2966,7 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
     switch(act->opcode){
         case OPCODE_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_SUM");
+            // fprintf(stderr, "ZZZZ ---> Executing OPCODE_SUM\n");
             // sum( output , in1 , in2) = (OUT1 , IN1 , IN2) has 2 inputs and 1 output
             // output = in1 + in2
 
