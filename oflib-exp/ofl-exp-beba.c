@@ -1017,18 +1017,6 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
 
-<<<<<<< HEAD
-=======
-            // TOGLIERE
-            fprintf(stderr, "da->dst_field %d\n", da->dst_field);
-            fprintf(stderr, "OXM_OF_METADATA %d\n", OXM_OF_METADATA);
-            if(da->dst_field == OXM_OF_METADATA){
-                fprintf(stderr, "--------> Aaaaaaaaaa <--------");
-            }
-
-
-
->>>>>>> d09654c16907103b9d0c565767b153b590f8e642
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
             necessary CRC recalculation based on the header field.>>
@@ -2960,6 +2948,9 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
         coeff_4 = act->coeff_4;
     }
 
+    if (act->opcode==OPCODE_EWMA){
+        coeff_3 = act->coeff_3;
+    }
     // OPCODE_AVG and OPCODE_VAR needs the current value of "output" operand
     if (act->opcode==OPCODE_AVG || act->opcode==OPCODE_VAR){
         if (!retrieve_operand(&output_value, (act->operand_types>>7)&1, act->output, "output", table, pkt, extractor, false))
@@ -3052,17 +3043,17 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             break;}
         case OPCODE_EWMA:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_EWMA");
-            // ewma( [last_ewma] , [current_sample] , [deltaT] )
-            // output = (1 - alpha)*current_sample + alpha(last_ewma)
+            // ewma( last_ewma , current_sample , alpha_m )
+            // result1 = (1 - alpha)*current_sample + alpha*(last_ewma) 
+            // where:  last_ewma is the previous value of the ewma;
+            //         current_sample is the value of the parameter to be measured at time t;
+            //         alpha_m is the two digit mantissa of the tuning parameter alpha.
 
-            // if deltaT < 1 s calculate ewma
-            if (operand_3_value<10000000) {
-                result1= (uint32_t) ((1 - 0.3)*operand_2_value + (0.3*operand_1_value));
-            // else result = current_sample
-            } else {
-                result1 = (uint32_t) operand_2_value;
-            }
+            double alpha = (double) coeff_3/100;
+
+            result1 = (uint32_t) ((1 - alpha)*operand_2_value + (alpha*operand_1_value));
             break;}
+
         case OPCODE_POLY_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_POLY_SUM");
             // polysum( [count] , [value_to_be_varianced] , [avg_value] , [var_value]) = (OUT1 , IN1 , IN2, IN3, COEFF1, COEFF2, COEFF3, COEFF4) has 8 inputs and 1 output

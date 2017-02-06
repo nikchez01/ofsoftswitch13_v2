@@ -261,12 +261,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 /* Cookie field is set 0xffffffffffffffff
                  because we cannot associate it to any
                  particular flow */
-                fprintf(stderr, "la prossima tabella è NULL\n");
                 action_set_execute(&pkt->action_set, pkt, 0xffffffffffffffff);
 
-                //for (i=0; i<OFPSC_MAX_CONDITIONS_NUM; i++)
-                //    condition_hdr[i] = NULL;
-                //state_hdr=NULL;
                 return;
             }
 
