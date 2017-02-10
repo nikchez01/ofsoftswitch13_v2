@@ -58,72 +58,73 @@ static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);
 
 void
 dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
-    if(act->experimenter_id == BEBA_VENDOR_ID)
-    {
-        struct ofl_exp_beba_act_header *action;
-        struct ofl_exp_msg_notify_state_change ntf_message;
-        
-        action = (struct ofl_exp_beba_act_header *) act;
-        switch(action->act_type){
+    switch (act->experimenter_id) {
+#if BEBA_STATE_ENABLED != 0
+        case (BEBA_VENDOR_ID): {
+            struct ofl_exp_beba_act_header *action;
+            struct ofl_exp_msg_notify_state_change ntf_message;
 
-            case(OFPAT_EXP_SET_STATE):
-            {
-                struct ofl_exp_action_set_state *wns = (struct ofl_exp_action_set_state *)action;
-                if (state_table_is_enabled(pkt->dp->pipeline->tables[wns->table_id]->state_table))
-                {
-                    struct state_table *st = pkt->dp->pipeline->tables[wns->table_id]->state_table;
-                    VLOG_DBG_RL(LOG_MODULE, &rl, "executing action NEXT STATE at stage %u", wns->table_id);
+            action = (struct ofl_exp_beba_act_header *) act;
+            switch (action->act_type) {
 
-                    // State Sync: Get the new state, encoded in ntf_message, and pack a message to be sent via dp_send_message.
-                    // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
-                    state_table_set_state(st, pkt, NULL, wns, &ntf_message);
-                    #if BEBA_STATE_NOTIFICATIONS != 0
-                    memset(&ntf_message, 0, sizeof(struct ofl_exp_msg_notify_state_change));
-                    if (ntf_message.old_state != ntf_message.new_state) {
-                        int err = dp_send_message(pkt->dp, (struct ofl_msg_header *)&ntf_message, NULL);
-                        if (err) {
-                            VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR sending state change notification %s:%i", __FILE__, __LINE__);
+                case (OFPAT_EXP_SET_STATE): {
+                    struct ofl_exp_action_set_state *wns = (struct ofl_exp_action_set_state *) action;
+                    if (state_table_is_enabled(pkt->dp->pipeline->tables[wns->table_id]->state_table)) {
+                        struct state_table *st = pkt->dp->pipeline->tables[wns->table_id]->state_table;
+                        VLOG_DBG_RL(LOG_MODULE, &rl, "executing action NEXT STATE at stage %u", wns->table_id);
+
+                        // State Sync: Get the new state, encoded in ntf_message, and pack a message to be sent via dp_send_message.
+                        // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
+                        state_table_set_state(st, pkt, NULL, wns, &ntf_message);
+                        #if BEBA_STATE_NOTIFICATIONS != 0
+                        memset(&ntf_message, 0, sizeof(struct ofl_exp_msg_notify_state_change));
+                        if (ntf_message.old_state != ntf_message.new_state) {
+                            int err = dp_send_message(pkt->dp, (struct ofl_msg_header *)&ntf_message, NULL);
+                            if (err) {
+                                VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR sending state change notification %s:%i", __FILE__, __LINE__);
+                            }
                         }
+                        #endif
+                    } else {
+                        VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR: SET STATE at stage %u which is not stateful",
+                                     wns->table_id);
                     }
-                    #endif
+                    break;
                 }
-                else
-                {
-                    VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR: SET STATE at stage %u which is not stateful", wns->table_id);
-                }
-                break;
-            }
-            case (OFPAT_EXP_SET_GLOBAL_STATE):
-            {
-                struct ofl_exp_action_set_global_state *wns = (struct ofl_exp_action_set_global_state *)action;
-                uint32_t global_state = pkt->dp->global_state;
+                case (OFPAT_EXP_SET_GLOBAL_STATE): {
+                    struct ofl_exp_action_set_global_state *wns = (struct ofl_exp_action_set_global_state *) action;
+                    uint32_t global_state = pkt->dp->global_state;
 
-                global_state = (global_state & ~(wns->global_state_mask)) | (wns->global_state & wns->global_state_mask);
-                pkt->dp->global_state = global_state;
-                break;
-            }
-            case(OFPAT_EXP_INC_STATE):
-            {
-                struct ofl_exp_action_inc_state *wns = (struct ofl_exp_action_inc_state *)action;
-                if (state_table_is_enabled(pkt->dp->pipeline->tables[wns->table_id]->state_table))
-                {
-                    struct state_table *table = pkt->dp->pipeline->tables[wns->table_id]->state_table;
-                    state_table_inc_state(table, pkt);
+                    global_state =
+                            (global_state & ~(wns->global_state_mask)) | (wns->global_state & wns->global_state_mask);
+                    pkt->dp->global_state = global_state;
+                    break;
                 }
-                else
-                {
-                    VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR NEXT STATE at stage %u: stage not stateful", wns->table_id);
+                case (OFPAT_EXP_INC_STATE): {
+                    struct ofl_exp_action_inc_state *wns = (struct ofl_exp_action_inc_state *) action;
+                    if (state_table_is_enabled(pkt->dp->pipeline->tables[wns->table_id]->state_table)) {
+                        struct state_table *table = pkt->dp->pipeline->tables[wns->table_id]->state_table;
+                        state_table_inc_state(table, pkt);
+                    } else {
+                        VLOG_WARN_RL(LOG_MODULE, &rl, "ERROR NEXT STATE at stage %u: stage not stateful",
+                                     wns->table_id);
+                    }
+                    break;
                 }
-                break;
+                default:
+                    VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to execute unknown BEBA experimenter action (%u).",
+                                 htonl(action->act_type));
+                    break;
             }
-            default:
-                VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to execute unknown experimenter action (%u).", htonl(act->experimenter_id));
-                break;
+            if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
+                char *p = packet_to_string(pkt);
+                VLOG_DBG_RL(LOG_MODULE, &rl, "action result: %s", p);
+                free(p);
+            }
         }
-        if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
-            char *p = packet_to_string(pkt);
-            VLOG_DBG_RL(LOG_MODULE, &rl, "action result: %s", p);
-            free(p);
+#endif
+        default: {
+            VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to execute unknown experimenter action (%u).", act->experimenter_id);
         }
     }
 }
@@ -131,6 +132,7 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
 void
 dp_exp_inst(struct packet *pkt UNUSED, struct ofl_instruction_experimenter *inst) {
 	switch (inst->experimenter_id) {
+#if BEBA_STATE_ENABLED != 0
 		case (BEBA_VENDOR_ID): {
 			struct ofl_exp_beba_instr_header *beba_inst = (struct ofl_exp_beba_instr_header*) inst;
 			switch (beba_inst->instr_type) {
@@ -206,6 +208,7 @@ dp_exp_inst(struct packet *pkt UNUSED, struct ofl_instruction_experimenter *inst
 			VLOG_WARN_RL(LOG_MODULE, &rl, "Unknown BEBA instruction type!");
 			return;
 		}
+#endif
 		default: {
 			VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to execute unknown experimenter instruction (%u).", inst->experimenter_id);
 		}
@@ -217,6 +220,7 @@ ofl_err
 dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experimenter *msg, const struct sender *sender UNUSED) {
     ofl_err err;
     switch (msg->experimenter_id) {
+#if BEBA_STATE_ENABLED != 0
         case (BEBA_VENDOR_ID): {
             struct ofl_exp_beba_msg_multipart_request *exp = (struct ofl_exp_beba_msg_multipart_request *)msg;
 
@@ -257,6 +261,7 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                 }
             }
         }
+#endif
         default: {
             VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to handle unknown experimenter stats (%u).", msg->experimenter_id);
             return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_EXPERIMENTER);
@@ -288,6 +293,7 @@ dp_exp_message(struct datapath *dp, struct ofl_msg_experimenter *msg, const stru
                 }
             }
         }
+#if BEBA_STATE_ENABLED != 0
         case (BEBA_VENDOR_ID): {
             struct ofl_exp_beba_msg_header *exp = (struct ofl_exp_beba_msg_header *)msg;
             struct ofl_exp_msg_notify_state_change ntf_message;
@@ -315,6 +321,7 @@ dp_exp_message(struct datapath *dp, struct ofl_msg_experimenter *msg, const stru
                 }
             }
         }
+#endif
         default: {
             return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_EXPERIMENTER);
         }

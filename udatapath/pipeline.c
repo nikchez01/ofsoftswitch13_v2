@@ -157,6 +157,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         /* BEBA EXTENSION BEGIN */
 
+        #if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
             state_entry = state_table_lookup(table->state_table, pkt);
@@ -184,7 +185,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             // FIXME: avoid matching on state on non-stateful stages.
             // hint: don't touch the packet, avoid installing flowmods that match on state.
         }
-
+        #endif
         /* BEBA EXTENSION END */
 
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
