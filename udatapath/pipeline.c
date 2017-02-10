@@ -159,7 +159,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         next_table = NULL;
 
         /* BEBA EXTENSION BEGIN */
-
+#if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
             table->state_table->last_lookup_state_entry = NULL;
@@ -204,7 +204,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         }
 
         /* BEBA EXTENSION END */
-
+#endif
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
             char *m = ofl_structs_match_to_string((struct ofl_match_header *) &(pkt->handle_std.match), pkt->dp->exp);
             VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.",

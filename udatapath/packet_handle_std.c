@@ -466,6 +466,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
         tunnel_id = *(uint64_t *)(f->value);
     }
 
+#if BEBA_STATE_ENABLED != 0
     HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
         hash_int(OXM_EXP_STATE,0), & handle->match.match_fields){
         state = *(uint32_t *)(f->value + EXP_ID_LEN);
@@ -495,7 +496,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
                     hmap_node, hash_int(OXM_EXP_RANDOM,0), &handle->match.match_fields){
                     random = *((uint16_t*) (f->value + EXP_ID_LEN));
     }
-
+#endif
     if (handle->match.dirty)
     {
     HMAP_FOR_EACH_SAFE(iter, next, struct ofl_match_tlv, hmap_node, &handle->match.match_fields)
@@ -516,7 +517,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 
     /* Add in_port value to the hash_map */
     ofl_structs_match_put32(&handle->match, OXM_OF_IN_PORT, handle->pkt->in_port);
-
+#if BEBA_STATE_ENABLED != 0
     /* Add pkt_len value to the hash_map */
     ofl_structs_match_exp_put16(&handle->match, OXM_EXP_PKT_LEN, 0xBEBABEBA, handle->pkt->buffer->size);
 
@@ -538,7 +539,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     /* Add timestamp and random value to the hash_map */
     ofl_structs_match_exp_put32(&handle->match, OXM_EXP_TIMESTAMP, 0xBEBABEBA, timestamp);
     ofl_structs_match_exp_put16(&handle->match, OXM_EXP_RANDOM, 0xBEBABEBA, random);
-
+#endif
     /*Add metadata  and tunnel_id value to the hash_map */
     ofl_structs_match_put64(&handle->match,  OXM_OF_METADATA, metadata);
     ofl_structs_match_put64(&handle->match,  OXM_OF_TUNNEL_ID, tunnel_id);
