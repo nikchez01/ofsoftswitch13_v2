@@ -1106,8 +1106,7 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
             msg.cookie = cookie;
 
             if (pkt->dp->config.miss_send_len != OFPCML_NO_BUFFER){
-                dp_buffers_save(pkt->dp->buffers, pkt);
-                msg.buffer_id = pkt->buffer_id;
+                msg.buffer_id = dp_buffers_save(pkt->dp->buffers, packet_clone(pkt));
                 msg.data_length = MIN(max_len, pkt->buffer->size);
             }
             else {
