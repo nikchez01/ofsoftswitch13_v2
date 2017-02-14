@@ -1017,6 +1017,8 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
 
+<<<<<<< HEAD
+=======
             // TOGLIERE
             fprintf(stderr, "da->dst_field %d\n", da->dst_field);
             fprintf(stderr, "OXM_OF_METADATA %d\n", OXM_OF_METADATA);
@@ -1026,6 +1028,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
 
 
 
+>>>>>>> d09654c16907103b9d0c565767b153b590f8e642
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
             necessary CRC recalculation based on the header field.>>
