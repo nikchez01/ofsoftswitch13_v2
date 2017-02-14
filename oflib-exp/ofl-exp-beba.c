@@ -224,7 +224,7 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
         }
 
-        fprintf(stderr, "KKKKKKKKKKK = %d\n", OXM_OF_METADATA);
+        // fprintf(stderr, "KKKKKKKKKKK = %d\n", OXM_OF_METADATA);
         // Tolto per test di un header field maggiore
 
         // header field extractor should be a field <=32 bit 
@@ -2446,7 +2446,8 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
     OFL_LOG_DBG(LOG_MODULE, "biflow value = %d", extractor->biflow);
 
     // if biflow
-    if(extractor->biflow){ 
+    if(extractor->biflow){
+        fprintf(stderr, "-----> ENTRO QUI\n");
         for (i = 0; i < extractor->field_count; i++) {
             uint32_t type = (int) extractor->fields[i];
             HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
@@ -2456,6 +2457,7 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
                             // memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
                             xbiflow[i].type = f->header;
                             xbiflow[i].value = f->value+EXP_ID_LEN;
+                            // xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
                             xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
 
                         }

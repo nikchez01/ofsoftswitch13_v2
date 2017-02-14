@@ -154,6 +154,21 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         VLOG_DBG_RL(LOG_MODULE, &rl, "trying table %u.", next_table->stats->table_id);
 
+        uint8_t* punt;
+        int xx = 0;
+        
+
+        // if (next_table->stats->table_id == 4){
+        //     fprintf(stderr, "\nINIZIO size = %d ---------> LUCA\n\n", (int)pkt->buffer->size );
+        //     punt = pkt->buffer->data;
+        //     for (xx ; xx < (int)pkt->buffer->size; xx++ ){
+        //         fprintf(stderr, "%02x ", punt[xx]);
+        //     }
+        //     fprintf(stderr, "\nFINE ---------> LUCA\n\n");
+
+        // }
+
+
         pkt->table_id = next_table->stats->table_id;
         table = next_table;
         next_table = NULL;
