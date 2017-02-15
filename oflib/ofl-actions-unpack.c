@@ -305,8 +305,6 @@ ofl_actions_unpack(struct ofp_action_header const *src, size_t *len, struct ofl_
             value = (uint8_t *) src + sizeof (struct ofp_action_set_field);
             da->field->value = malloc(OXM_LENGTH(da->field->header));
 
-            fprintf(stderr, "DENTRO ofl-actions-unpack");
-
             /*TODO: need to check if other fields are valid */
             if(da->field->header == OXM_OF_IN_PORT || da->field->header == OXM_OF_IN_PHY_PORT
                                     // || da->field->header == OXM_OF_METADATA Rimosso LUCA per test NON SERVE

@@ -132,6 +132,7 @@ ofl_structs_set_flow_state_unpack(struct ofp_exp_set_flow_state const *src, size
     int i;
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
 
+
     if((*len == ((7*sizeof(uint32_t) + ntohl(src->key_len)*sizeof(uint8_t))) + 4*sizeof(uint8_t)) && (ntohl(src->key_len)>0))
     {
         if (src->table_id >= PIPELINE_TABLES) {
@@ -224,7 +225,6 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
         }
 
-        // fprintf(stderr, "KKKKKKKKKKK = %d\n", OXM_OF_METADATA);
         // Tolto per test di un header field maggiore
 
         // header field extractor should be a field <=32 bit 
@@ -237,9 +237,6 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
         dst->extractor_id = src->extractor_id;
         dst->field = ntohl(src->field);
 
-        fprintf(stderr, "-----> dst->table_id = %d\n", dst->table_id);
-        fprintf(stderr, "-----> dst->extractor_id = %d\n", dst->extractor_id);
-        fprintf(stderr, "-----> dst->field = %d\n", dst->field);
     }
     else {
         //check of struct ofp_exp_set_header_field_extractor length.
@@ -1017,18 +1014,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
 
-<<<<<<< HEAD
-=======
-            // TOGLIERE
-            fprintf(stderr, "da->dst_field %d\n", da->dst_field);
-            fprintf(stderr, "OXM_OF_METADATA %d\n", OXM_OF_METADATA);
-            if(da->dst_field == OXM_OF_METADATA){
-                fprintf(stderr, "--------> Aaaaaaaaaa <--------");
-            }
 
-
-
->>>>>>> d09654c16907103b9d0c565767b153b590f8e642
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
             necessary CRC recalculation based on the header field.>>
@@ -2450,7 +2436,6 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
 
     // if biflow
     if(extractor->biflow){
-        fprintf(stderr, "-----> ENTRO QUI\n");
         for (i = 0; i < extractor->field_count; i++) {
             uint32_t type = (int) extractor->fields[i];
             HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
@@ -2465,7 +2450,6 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
 
                         }
                         else {
-                            // memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
                             xbiflow[i].type = f->header;
                             xbiflow[i].value = f->value;
                             xbiflow[i].len = (OXM_LENGTH(f->header));
@@ -2971,7 +2955,6 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
     switch(act->opcode){
         case OPCODE_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_SUM");
-            // fprintf(stderr, "ZZZZ ---> Executing OPCODE_SUM\n");
             // sum( output , in1 , in2) = (OUT1 , IN1 , IN2) has 2 inputs and 1 output
             // output = in1 + in2
 

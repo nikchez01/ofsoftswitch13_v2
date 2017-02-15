@@ -157,14 +157,13 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         uint8_t* punt;
         int xx = 0;
         
-
+        // Print pck 
         // if (next_table->stats->table_id == 4){
-        //     fprintf(stderr, "\nINIZIO size = %d ---------> LUCA\n\n", (int)pkt->buffer->size );
+        //     fprintf(stderr, "\nsize = %d --------->\n\n", (int)pkt->buffer->size );
         //     punt = pkt->buffer->data;
         //     for (xx ; xx < (int)pkt->buffer->size; xx++ ){
         //         fprintf(stderr, "%02x ", punt[xx]);
         //     }
-        //     fprintf(stderr, "\nFINE ---------> LUCA\n\n");
 
         // }
 
@@ -261,7 +260,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 /* Cookie field is set 0xffffffffffffffff
                  because we cannot associate it to any
                  particular flow */
-                fprintf(stderr, "la prossima tabella è NULL\n");
                 action_set_execute(&pkt->action_set, pkt, 0xffffffffffffffff);
 
                 //for (i=0; i<OFPSC_MAX_CONDITIONS_NUM; i++)
