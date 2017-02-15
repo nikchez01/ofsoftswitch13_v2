@@ -262,9 +262,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                  particular flow */
                 action_set_execute(&pkt->action_set, pkt, 0xffffffffffffffff);
 
-                //for (i=0; i<OFPSC_MAX_CONDITIONS_NUM; i++)
-                //    condition_hdr[i] = NULL;
-                //state_hdr=NULL;
                 return;
             }
 
