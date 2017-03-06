@@ -307,7 +307,7 @@ ofl_actions_unpack(struct ofp_action_header const *src, size_t *len, struct ofl_
 
             /*TODO: need to check if other fields are valid */
             if(da->field->header == OXM_OF_IN_PORT || da->field->header == OXM_OF_IN_PHY_PORT
-                                    // || da->field->header == OXM_OF_METADATA Rimosso LUCA per test NON SERVE
+                                    // || da->field->header == OXM_OF_METADATA 
                                     || da->field->header == OXM_OF_IPV6_EXTHDR
 									|| da->field->header == OXM_EXP_GLOBAL_STATE
                                     || da->field->header == OXM_EXP_STATE
