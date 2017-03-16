@@ -211,7 +211,7 @@ ofl_structs_set_global_state_unpack(struct ofp_exp_set_global_state const *src, 
     return 0;
 }
 
-// LUCAAA
+
 static ofl_err
 ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor const *src, size_t *len, struct ofl_exp_set_header_field_extractor *dst) {
 
@@ -225,7 +225,7 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
         }
 
-        // Tolto per test di un header field maggiore
+        // Test Header Field > 32 bit
 
         // header field extractor should be a field <=32 bit 
         // if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
@@ -450,8 +450,7 @@ check_operands(uint8_t operand_type, uint8_t operand_value, char * operand_name,
             break;
         case OPERAND_TYPE_HEADER_FIELD:
             if (allow_header_field){
-                // TOGLIERE
-                fprintf(stderr, "IF HEADER FIELD_LUCA\n" );
+
                 if (operand_value >= OFPSC_MAX_HEADER_FIELDS) {
                     OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid extractor id (%s) (%u).", operand_name, operand_value);
                     return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
@@ -882,7 +881,6 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
         
         case (OFPAT_EXP_SET_DATA_VAR):
         {   
-            fprintf(stderr, "SET_DATA_VAR\n" );
             // At unpack time we do NOT check if stage is stateful and state table is configured: those checks are run at action execution time
             struct ofp_exp_action_set_data_variable *sa;
             struct ofl_exp_action_set_data_variable *da;
@@ -1022,7 +1020,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             */
             //TODO Davide: what about METADATA? Should we need a dedicated WRITE CONTEXT TO METADATA? Maybe we can just remove the check below...
             if(da->dst_field == OXM_OF_IN_PORT || da->dst_field == OXM_OF_IN_PHY_PORT
-                                    // || da->dst_field == OXM_OF_METADATA  //Rimosso LUCA per test
+                                    // || da->dst_field == OXM_OF_METADATA  
                                     || da->dst_field == OXM_OF_IPV6_EXTHDR
                                     || da->dst_field == OXM_EXP_GLOBAL_STATE
                                     || da->dst_field == OXM_EXP_STATE
