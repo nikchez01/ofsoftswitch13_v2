@@ -625,8 +625,12 @@ do_send(struct vconn *vconn, struct ofpbuf *buf)
 {
     int retval;
 
-    assert(buf->size >= sizeof(struct ofp_header));
-    assert(((struct ofp_header *) buf->data)->length == htons(buf->size));
+    if ((buf->size < sizeof(struct ofp_header)) ||
+       (((struct ofp_header *) buf->data)->length != htons(buf->size))) {
+	    VLOG_DBG_RL(LOG_MODULE, &rl, "do_send: broken of message!");
+	    return -1;
+    }
+
     if (!VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
         retval = (vconn->class->send)(vconn, buf);
     } else {
