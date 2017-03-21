@@ -437,6 +437,10 @@ flow_table_stats(struct flow_table *table, struct ofl_msg_multipart_request_flow
     struct flow_entry *entry;
 
     LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries) {
+
+	if (*stats_num >= 1165)
+	    break;
+
         if ((msg->out_port == OFPP_ANY || flow_entry_has_out_port(entry, msg->out_port)) &&
             (msg->out_group == OFPG_ANY || flow_entry_has_out_group(entry, msg->out_group)) &&
             match_std_nonstrict((struct ofl_match *)msg->match,
