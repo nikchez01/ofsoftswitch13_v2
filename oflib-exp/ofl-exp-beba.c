@@ -2381,6 +2381,13 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             }
         }
 
+        // sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) +
+        // ofl_structs_state_stats_ofp_total_len(stats, stats_num, exp) <= 2**16-1
+        // (16 + 8 + stats_num*112) <= 65535
+        // We keep at most 584 state_stats per reply to avoid segmentation of multipart reply messages
+        if (*stats_num == 583)
+            break;
+
     }
 
      /*DEFAULT ENTRY*/
