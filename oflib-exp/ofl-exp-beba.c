@@ -2322,7 +2322,7 @@ void state_table_destroy(struct state_table *table) {
     free(table);
 }
 
-// POI
+
 void swap_struct_biflow(struct struct_biflow *a, struct struct_biflow *b){
     struct struct_biflow c;
     c = *a;
@@ -2330,25 +2330,23 @@ void swap_struct_biflow(struct struct_biflow *a, struct struct_biflow *b){
     *b = c;
 }
 
-// POI
-// 1 = vero
+
 int a_min_b(struct struct_biflow *a, struct struct_biflow *b){
     int cnt = 0;
 
     for (cnt = 0; cnt < a->len; cnt++) {
-        if ((a->value)[cnt] != (b->value)[cnt]) { //se sono diversi
-            if ((a->value)[cnt] < (b->value)[cnt]) {    // se e minore
-                return 1; // interrompo appena trovo uno piu grande o piu piccolo se a < b return 1 (vero) devo fare lo swap
+        if ((a->value)[cnt] != (b->value)[cnt]) { 
+            if ((a->value)[cnt] < (b->value)[cnt]) {
+                return 1; 
             } else {
-                return 0;  // interrompo appena trovo uno piu grande o piu piccolo
+                return 0;
             }
         }
     }
     return 0;
 }
 
-// POI
-// Ordino dal piu grande al piu piccolo in base ai type
+
 void selection_sort(struct struct_biflow *a, int field_count){
     int i = 0, min, j, z;
     int n = OFPSC_MAX_KEY_LEN;
@@ -2363,18 +2361,16 @@ void selection_sort(struct struct_biflow *a, int field_count){
         swap_struct_biflow(&a[min],&a[i]);
     }
 
-    // Ordinamento dei gruppi in base al valore
+
     i = 0;
     while (i < field_count){
 
-        if(a[i].type == 0)  //quando trovo il primo elemento nn inizializzato termino l'ordinamento
+        if(a[i].type == 0) 
             return;
 
         switch (a[i].type) {
             case OXM_OF_ETH_DST:
                 if (a[i+1].type == OXM_OF_ETH_SRC) {
-                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_ETH_DST\n\n");
-                    // per ogni valore della chiave (si puo migliorare questo ordinamento)
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }
@@ -2383,7 +2379,7 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_IPV4_SRC:
                 if (a[i+1].type == OXM_OF_IPV4_DST) {
-                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_IPV4_SRC\n\n");
+                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                       
@@ -2392,7 +2388,7 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_TCP_SRC:
                 if (a[i+1].type == OXM_OF_TCP_DST) {
-                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_TCP_SRC\n\n");
+                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                       
@@ -2401,7 +2397,7 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_UDP_SRC:
                 if (a[i+1].type == OXM_OF_UDP_DST) {
-                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_UDP_SRC\n\n");
+                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                        
@@ -2410,7 +2406,7 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_IPV6_SRC:
                 if (a[i+1].type == OXM_OF_IPV6_DST) {
-                    // OFL_LOG_DBG(LOG_MODULE, "OXM_OF_ETH_SRC\n\n");
+                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                        
@@ -2418,12 +2414,12 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 }
                 break;
         }
-        i++;    //avanzo in ogni caso di 1, se sto in uno dei case invece anvanzo di 2 (1 prima e 1 ora)
+        i++;
     }
 
 }
 
-// POI
+
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt) {
     int i;
@@ -2440,10 +2436,10 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
                 hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
                     if (type == f->header) {
                         if (OXM_VENDOR(f->header)==0xFFFF){
-                            // memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+                            
                             xbiflow[i].type = f->header;
                             xbiflow[i].value = f->value+EXP_ID_LEN;
-                            // xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
+                            
                             xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
 
                         }
@@ -2452,13 +2448,13 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
                             xbiflow[i].value = f->value;
                             xbiflow[i].len = (OXM_LENGTH(f->header));
                         }
-                        // extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
+                        
                         break;
                     }
             }
         }        
 
-        //swap_struct_biflow(&xbiflow[0],&xbiflow[1]);
+        
         selection_sort(&xbiflow, extractor->field_count);
         extracted_key_len = 0;
 
@@ -2468,7 +2464,7 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
 
         }
 
-    // else not biflow (resta uguale)
+    
     } else {
         for (i = 0; i < extractor->field_count; i++) {
             uint32_t type = (int) extractor->fields[i];
@@ -2867,7 +2863,7 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
         memcpy(table->default_state_entry.stats->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
     }
     dest->table_id = ke->table_id;
-    dest->biflow = ke->biflow;   // aggiunto la memorizzazione del campo nella struttura key
+    dest->biflow = ke->biflow;  
     dest->field_count = ke->field_count;
     dest->key_len = key_len;
     memcpy(dest->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
