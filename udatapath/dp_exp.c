@@ -227,24 +227,30 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
             switch(exp->type) {
                 case (OFPMP_EXP_STATE_STATS_AND_DELETE):
                 case (OFPMP_EXP_STATE_STATS): {
-                    struct ofl_exp_msg_multipart_reply_state reply;
+                    struct ofl_exp_msg_multipart_reply_state *replies;
                     size_t i;
-                    err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &reply);
-                    dp_send_message(dp, (struct ofl_msg_header *)&reply, sender);
-                    if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
-                        if (!((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state ||
+                    size_t j;
+                    size_t replies_num;
+                    err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &replies, &replies_num);
+                    for(j=0; j < replies_num; j++) {
+                        dp_send_message(dp, (struct ofl_msg_header *)&replies[j], sender);
+                        if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
+                            //TODO Davide: check, entry by entry, if it's the DEFAULT (NB due to the segmentation, the last state entry is not guaranteed to be the DEFAULT)
+                            if (!((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state ||
                                 (((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state && ((struct ofl_exp_msg_multipart_request_state *)msg)->state == STATE_DEFAULT)){
-                            // stats_num - 1 because default state entry must not be freed
-                            for (i = 0; i < reply.stats_num - 1; i++) {
-                                free(reply.stats[i]);
-                            }
-                        } else {
-                            for (i = 0; i < reply.stats_num; i++) {
-                                free(reply.stats[i]);
+                                // stats_num - 1 because default state entry must not be freed
+                                for (i = 0; i < replies[j].stats_num - 1; i++) {
+                                    free(replies[j].stats[i]);
+                                }
+                            } else {
+                                for (i = 0; i < replies[j].stats_num; i++) {
+                                    free(replies[j].stats[i]);
+                                }
                             }
                         }
                     }
-                    free(reply.stats);
+                    free(replies[0].stats);
+                    free(replies);
                     ofl_msg_free((struct ofl_msg_header *)msg, dp->exp);
                     return err;
                 }

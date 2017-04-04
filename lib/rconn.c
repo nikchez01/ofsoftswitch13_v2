@@ -380,6 +380,7 @@ do_tx_work(struct rconn *rc)
     while (rc->txq.n > 0) {
         int error = try_send(rc);
         if (error) {
+	    /* VLOG_INFO(LOG_MODULE, "%s: do_tx_work failed (%s)", rc->name, strerror(error)); */
             break;
         }
     }

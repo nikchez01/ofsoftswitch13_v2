@@ -2249,12 +2249,21 @@ handle_pkttmp_mod(struct pipeline *pl, struct ofl_exp_msg_pkttmp_mod *msg,
 }
 
 ofl_err
-handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender UNUSED, struct ofl_exp_msg_multipart_reply_state *reply) {
+handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender UNUSED, struct ofl_exp_msg_multipart_reply_state **replies, size_t *replies_num) {
     struct ofl_exp_state_stats **stats = xmalloc(sizeof(struct ofl_exp_state_stats *));
     size_t stats_size = 1;
     size_t stats_num = 0;
+    size_t remaining_stats;
+    size_t i;
+    /*
+    A multipart reply message bigger than 65K (OF msg max size) must be segmented in multiple messages with the same xid
+    and with the OFPMPF_REPLY_MORE flag set up to the last one reply.
+    sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) +
+    ofl_structs_state_stats_ofp_total_len(stats, stats_num, exp) <= 2**16-1
+    (16 + 8 + stats_num*112) <= 65535*/
+    size_t max_stats_state_per_reply = 100;
+
     if (msg->table_id == 0xff) {
-        size_t i;
         for (i=0; i<PIPELINE_TABLES; i++) {
             if (state_table_is_enabled(pl->tables[i]->state_table))
                 state_table_stats(pl->tables[i]->state_table, msg, &stats, &stats_size, &stats_num, i, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE);
@@ -2263,13 +2272,22 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
         if (state_table_is_enabled(pl->tables[msg->table_id]->state_table))
             state_table_stats(pl->tables[msg->table_id]->state_table, msg, &stats, &stats_size, &stats_num, msg->table_id, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE);
     }
-    *reply = (struct ofl_exp_msg_multipart_reply_state)
-            {{{{{.type = OFPT_MULTIPART_REPLY},
-              .type = OFPMP_EXPERIMENTER, .flags = 0x0000},
-             .experimenter_id = BEBA_VENDOR_ID},
-             .type = msg->header.type},
-             .stats = stats,
-             .stats_num = stats_num};
+    *replies_num = ROUND_UP(stats_num, max_stats_state_per_reply)/max_stats_state_per_reply;
+    remaining_stats = stats_num;
+
+    *replies = (struct ofl_exp_msg_multipart_reply_state *) malloc((*replies_num)*sizeof(struct ofl_exp_msg_multipart_reply_state));
+
+    for (i=0; i < *replies_num; i++) {
+        ((*replies)+i)->header.header.header.header.type = OFPT_MULTIPART_REPLY;
+        ((*replies)+i)->header.header.header.type = OFPMP_EXPERIMENTER;
+        ((*replies)+i)->header.header.header.flags = (i==*replies_num-1) ? 0x0000 : OFPMPF_REPLY_MORE;
+        ((*replies)+i)->header.header.experimenter_id = BEBA_VENDOR_ID;
+        ((*replies)+i)->header.type = msg->header.type;
+        ((*replies)+i)->stats = stats+i*max_stats_state_per_reply;
+        ((*replies)+i)->stats_num = (remaining_stats>=max_stats_state_per_reply) ? max_stats_state_per_reply : remaining_stats;
+        remaining_stats -= max_stats_state_per_reply;
+    }
+
     return 0;
 }
 
@@ -2380,16 +2398,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
                 free(entry);
             }
         }
-
-        // sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) +
-        // ofl_structs_state_stats_ofp_total_len(stats, stats_num, exp) <= 2**16-1
-        // (16 + 8 + stats_num*112) <= 65535
-        // We keep at most 584 state_stats per reply to avoid segmentation of multipart reply messages
-        if (*stats_num == 100)
-            break;
-
     }
-
 
      /*DEFAULT ENTRY*/
     if(!msg->get_from_state || (msg->get_from_state && msg->state == STATE_DEFAULT))

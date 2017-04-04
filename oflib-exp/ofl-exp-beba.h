@@ -377,7 +377,7 @@ handle_state_mod(struct pipeline *pl, struct ofl_exp_msg_state_mod *msg, const s
 
 /* Handles a state stats request. */
 ofl_err
-handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_state *reply);
+handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_state **replies, size_t *replies_num);
 
 /* Handles a global state stats request. */
 ofl_err

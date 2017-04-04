@@ -699,7 +699,7 @@ dp_send_message(struct datapath *dp, struct ofl_msg_header *msg,
     if (error) {
         VLOG_WARN_RL(LOG_MODULE, &rl, "There was an error sending the message!");
         /* TODO Zoltan: is delete needed? */
-        ofpbuf_delete(ofpbuf);
+        //ofpbuf_delete(ofpbuf);
         return error;
     }
     return 0;
