@@ -2260,7 +2260,7 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
     and with the OFPMPF_REPLY_MORE flag set up to the last one reply.
     sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) +
     ofl_structs_state_stats_ofp_total_len(stats, stats_num, exp) <= 2**16-1
-    (16 + 8 + stats_num*112) <= 65535*/
+    (16 + 8 + stats_num*112) <= 65535 --> stats_num <= 584*/
     size_t max_stats_state_per_reply = 100;
 
     if (msg->table_id == 0xff) {
@@ -2272,7 +2272,9 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
         if (state_table_is_enabled(pl->tables[msg->table_id]->state_table))
             state_table_stats(pl->tables[msg->table_id]->state_table, msg, &stats, &stats_size, &stats_num, msg->table_id, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE);
     }
-    *replies_num = ROUND_UP(stats_num, max_stats_state_per_reply)/max_stats_state_per_reply;
+
+    // We must return at least one reply, even if empty
+    *replies_num = stats_num>0 ? ROUND_UP(stats_num, max_stats_state_per_reply)/max_stats_state_per_reply : 1;
     remaining_stats = stats_num;
 
     *replies = (struct ofl_exp_msg_multipart_reply_state *) malloc((*replies_num)*sizeof(struct ofl_exp_msg_multipart_reply_state));

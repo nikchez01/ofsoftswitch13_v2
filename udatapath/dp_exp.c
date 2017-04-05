@@ -235,17 +235,10 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                     for(j=0; j < replies_num; j++) {
                         dp_send_message(dp, (struct ofl_msg_header *)&replies[j], sender);
                         if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
-                            //TODO Davide: check, entry by entry, if it's the DEFAULT (NB due to the segmentation, the last state entry is not guaranteed to be the DEFAULT)
-                            if (!((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state ||
-                                (((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state && ((struct ofl_exp_msg_multipart_request_state *)msg)->state == STATE_DEFAULT)){
-                                // stats_num - 1 because default state entry must not be freed
-                                for (i = 0; i < replies[j].stats_num - 1; i++) {
+                            for (i = 0; i < replies[j].stats_num; i++) {
+                                //DEFAULT state entries must not be removed
+                                if (replies[j].stats[i]->entry.key_len != 0)
                                     free(replies[j].stats[i]);
-                                }
-                            } else {
-                                for (i = 0; i < replies[j].stats_num; i++) {
-                                    free(replies[j].stats[i]);
-                                }
                             }
                         }
                     }
