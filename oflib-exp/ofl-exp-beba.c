@@ -1000,6 +1000,8 @@ ofl_exp_beba_stats_reply_unpack(struct ofp_multipart_reply const *os, uint8_t co
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
         case (OFPMP_EXP_STATE_STATS):
         {
+            //TODO: dpctl stats-state prints just the last reply. We need to handle segmented multipart replies.
+            // Maybe we can build an unique reassembled ofl_exp_msg_multipart_reply_state
             struct ofp_exp_state_stats *stat;
             struct ofl_exp_msg_multipart_reply_state *dm;
             ofl_err error;
