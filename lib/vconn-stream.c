@@ -116,7 +116,7 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
 {
     struct stream_vconn *s = stream_vconn_cast(vconn);
     struct ofpbuf *rx;
-    size_t want_bytes  = sizeof(struct ofp_header);
+    size_t want_bytes = sizeof(struct ofp_header);
     ssize_t retval;
 
     if (s->rxbuf == NULL) {
@@ -124,12 +124,15 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
     }
     rx = s->rxbuf;
     	
+#if 0
     ofpbuf_prealloc_tailroom(rx, want_bytes);
 
     do 
     {
     	retval = read(s->fd, ofpbuf_tail(rx), want_bytes);
 	if (retval < 0) {
+	    if (errno != EAGAIN)
+		    VLOG_ERR_RL(LOG_MODULE, &rl, "read error (size = %zu, want_bytes=%zu, retval=%d -> %d:%s)", rx->size, want_bytes, retval, errno, strerror(errno));
             return errno;
 	}
 
@@ -168,8 +171,7 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
     *bufferp = rx;
     s->rxbuf = NULL;
     return 0;
-
-#if 0
+#else
 again:
 
     if (sizeof(struct ofp_header) > rx->size) {
