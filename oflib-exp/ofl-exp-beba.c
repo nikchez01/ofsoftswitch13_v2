@@ -2263,7 +2263,7 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
     sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) +
     ofl_structs_state_stats_ofp_total_len(stats, stats_num, exp) <= 2**16-1
     (16 + 8 + stats_num*112) <= 65535 --> stats_num <= 584*/
-    size_t max_stats_state_per_reply = 100;
+    size_t max_stats_state_per_reply = 500;
 
     if (msg->table_id == 0xff) {
         for (i=0; i<PIPELINE_TABLES; i++) {
