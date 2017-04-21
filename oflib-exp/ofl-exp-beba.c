@@ -1417,6 +1417,26 @@ ofl_exp_beba_stats_req_pack(struct ofl_msg_multipart_request_experimenter const 
             exp_header->experimenter = htonl(BEBA_VENDOR_ID);
             exp_header->exp_type = htonl(OFPMP_EXP_GLOBAL_STATE_STATS);
 
+            return 0;}
+
+
+            case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+                struct ofl_exp_msg_multipart_request_global_data *msg = (struct ofl_exp_msg_multipart_request_global_data *) e;
+                struct ofp_multipart_request *req;
+                struct ofp_exp_global_data_stats_request *stats;
+                struct ofp_experimenter_stats_header *exp_header;
+                *buf_len = sizeof(struct ofp_multipart_request) + sizeof(struct ofp_exp_global_data_stats_request);
+                *buf = (uint8_t *) malloc(*buf_len);
+
+                req = (struct ofp_multipart_request *) (*buf);
+                stats = (struct ofp_exp_global_data_stats_request *) req->body;
+                exp_header = (struct ofp_experimenter_stats_header *) stats;
+                exp_header->experimenter = htonl(BEBA_VENDOR_ID);
+                exp_header->exp_type = htonl(OFPMP_EXP_GLOBAL_DATA_STATS);
+
+                stats->table_id = msg->table_id;
+                memset(stats->pad, 0x00, 7);
+
             return 0;
 
         }
@@ -1477,6 +1497,30 @@ ofl_exp_beba_stats_reply_pack(struct ofl_msg_multipart_reply_experimenter const 
             stats->global_state = htonl(msg->global_state);
             return 0;
         }
+		case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+			OFL_LOG_DBG(LOG_MODULE, "ANDREA: stats reply pack: case global data :D");
+			struct ofl_exp_msg_multipart_reply_global_data *msg = (struct ofl_exp_msg_multipart_reply_global_data *) e;
+			struct ofp_multipart_reply *resp;
+			struct ofp_exp_global_data_stats_reply *stats;
+			struct ofp_experimenter_stats_header *exp_header;
+
+			*buf_len = sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_exp_global_data_stats_reply);
+			*buf = (uint8_t *) malloc(*buf_len);
+
+			resp = (struct ofp_multipart_reply *) (*buf);
+			stats = (struct ofp_exp_global_data_stats_reply *) resp->body;
+			exp_header = (struct ofp_experimenter_stats_header *) stats;
+
+			exp_header->experimenter = htonl(BEBA_VENDOR_ID);
+			exp_header->exp_type = htonl(OFPMP_EXP_GLOBAL_DATA_STATS);
+			size_t id;
+			for (id = 0; id < OFPSC_MAX_GLOBAL_DATA_VAR_NUM; id++)
+				((stats->stats).global_data)[id] = htonl((msg->stats->global_data)[id]);
+
+
+			return 0;
+		}
+
         default:
             return -1;
     }
@@ -1538,6 +1582,21 @@ ofl_exp_beba_stats_req_unpack(struct ofp_multipart_request const *os, uint8_t co
             *msg = (struct ofl_msg_multipart_request_header *) dm;
             return 0;
         }
+		case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+			OFL_LOG_DBG(LOG_MODULE, "ANDREA: ofl_exp_beba_stats_req_unpack: inside case");
+			struct ofl_exp_msg_multipart_request_global_data *dm;
+			struct ofp_exp_global_data_stats_request *sm;
+			sm = (struct ofp_exp_global_data_stats_request *) ext;
+			dm = (struct ofl_exp_msg_multipart_request_global_data *) malloc(
+					sizeof(struct ofl_exp_msg_multipart_request_global_data));
+			dm->header.type = ntohl(ext->exp_type);
+			dm->header.header.experimenter_id = ntohl(ext->experimenter);
+			dm->table_id = sm->table_id;
+			*len -= sizeof(struct ofp_exp_global_data_stats_request);
+			*msg = (struct ofl_msg_multipart_request_header *) dm;
+			OFL_LOG_DBG(LOG_MODULE, "ANDREA: ofl_exp_beba_stats_req_unpack: end case");
+			return 0;
+		}
         default:
             return -1;
     }
@@ -1607,6 +1666,35 @@ ofl_exp_beba_stats_reply_unpack(struct ofp_multipart_reply const *os, uint8_t co
             *msg = (struct ofl_msg_multipart_reply_header *) dm;
             return 0;
         }
+		case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+			struct ofp_exp_global_data_stats_reply *sm;
+			struct ofl_exp_msg_multipart_reply_global_data *dm;
+
+			if (*len < sizeof(struct ofp_exp_global_data_stats)) {
+				OFL_LOG_WARN(LOG_MODULE, "Received GLOBAL DATA stats reply has invalid length (%zu).", *len);
+				return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+			}
+			*len -= sizeof(struct ofp_exp_global_data_stats_reply);
+
+			sm = (struct ofp_exp_global_data_stats_reply *) os->body;
+			dm = (struct ofl_exp_msg_multipart_reply_global_data *) malloc(
+					sizeof(struct ofl_exp_msg_multipart_reply_global_data));
+
+			dm->stats = (struct ofl_exp_global_data_stats *) malloc(sizeof(struct ofl_exp_global_data_stats));
+
+
+			dm->header.type = ntohl(ext->exp_type);
+			dm->header.header.experimenter_id = ntohl(ext->experimenter);
+
+			size_t id;
+			for (id = 0; id < OFPSC_MAX_GLOBAL_DATA_VAR_NUM; id++)
+				(dm->stats->global_data)[id] = ntohl(((sm->stats).global_data)[id]);
+
+			*msg = (struct ofl_msg_multipart_reply_header *) dm;
+			return 0;
+		}
+
+
         default:
             return -1;
     }
@@ -1711,6 +1799,13 @@ ofl_exp_beba_stats_req_free(struct ofl_msg_multipart_request_header *msg) {
             free(a);
             break;
         }
+		case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+			struct ofl_exp_msg_multipart_request_global_data *a = (struct ofl_exp_msg_multipart_request_global_data *) ext;
+			free(a);
+			break;
+		}
+
+
         default: {
             OFL_LOG_WARN(LOG_MODULE, "Trying to free unknown Beba Experimenter message.");
         }
@@ -1739,6 +1834,14 @@ ofl_exp_beba_stats_reply_free(struct ofl_msg_multipart_reply_header *msg) {
             free(a);
             break;
         }
+		case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+			struct ofl_exp_msg_multipart_reply_global_data *a = (struct ofl_exp_msg_multipart_reply_global_data *) ext;
+			free(a->stats);
+			free(a);
+			break;
+		}
+
+
         default: {
             OFL_LOG_WARN(LOG_MODULE, "Trying to free unknown Beba Experimenter message.");
         }
@@ -3518,6 +3621,32 @@ handle_stats_request_global_state(struct pipeline *pl, const struct sender *send
              .global_state = global_state};
     return 0;
 }
+
+
+ofl_err handle_stats_request_global_data(struct pipeline *pl, struct ofl_exp_msg_multipart_request_global_data *msg,
+										 const struct sender *sender UNUSED,
+										 struct ofl_exp_msg_multipart_reply_global_data *reply) {
+	struct ofl_exp_global_data_stats *stats = xmalloc(sizeof(struct ofl_exp_global_data_stats));
+	struct state_table *st = pl->tables[msg->table_id]->state_table;
+	//global_data_var = (global_data_var & ~(p->mask)) | (p->value & p->mask);
+	if (state_table_is_enabled(st)) {
+		size_t id;
+		for (id = 0; id < OFPSC_MAX_GLOBAL_DATA_VAR_NUM; id++) {
+			(stats->global_data)[id] = (st->global_data_var)[id];
+			OFL_LOG_DBG(LOG_MODULE, "global data var %u = %u",id,(st->global_data_var)[id]);
+		}
+
+	}
+
+	*reply = (struct ofl_exp_msg_multipart_reply_global_data)
+			{{{{{.type = OFPT_MULTIPART_REPLY},
+					   .type = OFPMP_EXPERIMENTER, .flags = 0x0000},
+					  .experimenter_id = BEBA_VENDOR_ID},
+					 .type = OFPMP_EXP_GLOBAL_DATA_STATS},
+					.stats = stats};
+	return 0;
+}
+
 
 void
 state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_request_state *msg,

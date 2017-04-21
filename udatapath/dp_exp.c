@@ -286,6 +286,13 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                     ofl_msg_free((struct ofl_msg_header *)msg, dp->exp);
                     return err;
                 }
+                case (OFPMP_EXP_GLOBAL_DATA_STATS): {
+                    struct ofl_exp_msg_multipart_reply_global_data reply;
+                    err = handle_stats_request_global_data(dp->pipeline,(struct ofl_exp_msg_multipart_request_global_data *)msg, sender, &reply);
+                    dp_send_message(dp, (struct ofl_msg_header *)&reply, sender);
+                    ofl_msg_free((struct ofl_msg_header *)msg, dp->exp);
+                    return err;
+                }
                 default: {
                     VLOG_WARN_RL(LOG_MODULE, &rl, "Trying to handle unknown experimenter type (%u).", exp->type);
                     return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_EXPERIMENTER);
