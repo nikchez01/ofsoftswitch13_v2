@@ -451,7 +451,7 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
     int i = 0;
     uint32_t current_global_state = OFP_GLOBAL_STATE_DEFAULT;
     gettimeofday(&tv,NULL);
-    timestamp = (1000000 * tv.tv_sec + tv.tv_usec); // timestamp in us
+    timestamp = (1000000 * tv.tv_sec + tv.tv_usec)/1000; // timestamp in ms
 
     if(handle->valid)
         return;
