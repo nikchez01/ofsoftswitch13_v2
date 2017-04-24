@@ -2628,8 +2628,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                 }
             }
 
-            fprintf(stderr, "operand_value = %d\n", *operand_value);
-
+            OFL_LOG_DBG(LOG_MODULE, "operand_value = %d\n", *operand_value);
 
             break;
         }

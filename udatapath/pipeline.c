@@ -154,20 +154,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 
         VLOG_DBG_RL(LOG_MODULE, &rl, "trying table %u.", next_table->stats->table_id);
 
-        uint8_t* punt;
-        int xx = 0;
-        
-        // Print pck 
-        // if (next_table->stats->table_id == 4){
-        //     fprintf(stderr, "\nsize = %d --------->\n\n", (int)pkt->buffer->size );
-        //     punt = pkt->buffer->data;
-        //     for (xx ; xx < (int)pkt->buffer->size; xx++ ){
-        //         fprintf(stderr, "%02x ", punt[xx]);
-        //     }
-
-        // }
-
-
         pkt->table_id = next_table->stats->table_id;
         table = next_table;
         next_table = NULL;
