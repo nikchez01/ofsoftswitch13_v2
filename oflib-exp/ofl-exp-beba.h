@@ -105,7 +105,7 @@ struct ofl_exp_del_pkttmp {
 * Multipart reply message: State entry statistics
 *************************/
 struct ofl_exp_state_entry{
-    uint32_t            key_len;
+    uint8_t             key_len;
     uint8_t             key[OFPSC_MAX_KEY_LEN];
     uint32_t            state;
 };

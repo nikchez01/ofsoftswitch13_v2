@@ -2387,7 +2387,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             // timeouts and rollbacks have been already set
             (*stats)[(*stats_num)]->entry.state = entry->state;
             memcpy((*stats)[(*stats_num)]->entry.key, entry->key, extractor->key_len);
-            (*stats)[(*stats_num)]->entry.key_len = extractor->key_len;
+            (*stats)[(*stats_num)]->entry.key_len = ((uint8_t) extractor->key_len);
             
             (*stats_num)++;
 
@@ -2415,7 +2415,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
 size_t
 ofl_structs_state_stats_ofp_len(struct ofl_exp_state_stats *stats UNUSED, struct ofl_exp const *exp UNUSED)
 {
-    return ROUND_UP((sizeof(struct ofp_exp_state_stats)),8);
+    return ROUND_UP((sizeof(struct ofp_exp_state_stats)+stats->entry.key_len),8);
 }
 
 size_t
@@ -2433,24 +2433,21 @@ ofl_structs_state_stats_pack(struct ofl_exp_state_stats const *src, uint8_t *dst
     struct ofp_exp_state_stats *state_stats;
     size_t total_len;
     size_t  i;
-    total_len = ROUND_UP(sizeof(struct ofp_exp_state_stats),8);
+    total_len = ROUND_UP(sizeof(struct ofp_exp_state_stats)+src->entry.key_len,8);
     state_stats = (struct ofp_exp_state_stats*) dst;
-    memset(state_stats, 0, sizeof(struct ofp_exp_state_stats));
     state_stats->length = htons(total_len);
     state_stats->table_id = src->table_id;
+    state_stats->key_len = src->entry.key_len;
     state_stats->duration_sec = htonl(src->duration_sec);
     state_stats->duration_nsec = htonl(src->duration_nsec);
-
-    state_stats->pad = 0;
-    state_stats->pad2 = 0;
-
-    state_stats->entry.key_len = htonl(src->entry.key_len);
-    memcpy(state_stats->entry.key, src->entry.key, src->entry.key_len);
-    state_stats->entry.state = htonl(src->entry.state);
     state_stats->idle_timeout = htonl(src->idle_timeout);
     state_stats->idle_rollback = htonl(src->idle_rollback);
     state_stats->hard_timeout = htonl(src->hard_timeout);
     state_stats->hard_rollback = htonl(src->hard_rollback);
+    state_stats->state = htonl(src->entry.state);
+    dst += sizeof(struct ofp_exp_state_stats);
+    memset(dst, 0, total_len-sizeof(struct ofp_exp_state_stats));
+    memcpy(dst, src->entry.key, src->entry.key_len);
     return total_len;
 }
 
@@ -2829,17 +2826,17 @@ ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t co
         return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_TABLE_ID);
     }
 
-    slen = ntohs(src->length) - sizeof(struct ofp_exp_state_stats);
+    slen = ntohs(src->length) - ROUND_UP(sizeof(struct ofp_exp_state_stats)+src->key_len,8);
 
     s = (struct ofl_exp_state_stats *)malloc(sizeof(struct ofl_exp_state_stats));
     s->table_id =  src->table_id;
     s->duration_sec = ntohl(src->duration_sec);
     s->duration_nsec = ntohl(src->duration_nsec);
 
-    s->entry.key_len = ntohl(src->entry.key_len);
+    s->entry.key_len = src->key_len;
     for (i=0;i<s->entry.key_len;i++)
-               s->entry.key[i]=src->entry.key[i];
-    s->entry.state = ntohl(src->entry.state);
+               s->entry.key[i]=src->key[i];
+    s->entry.state = ntohl(src->state);
 
     s->idle_timeout = ntohl(src->idle_timeout);
     s->idle_rollback = ntohl(src->idle_rollback);
