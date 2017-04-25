@@ -1657,7 +1657,7 @@ struct state_table * state_table_create(void)
     table->default_state_entry.state = STATE_DEFAULT;
     table->default_state_entry.stats = xmalloc(sizeof(struct ofl_exp_state_stats));
     memset(table->default_state_entry.stats, 0, sizeof(struct ofl_exp_state_stats));
-    // table_id,field_count and fields will be set during lookup-scope configuration
+    // table_id will be set during lookup-scope configuration
     table->default_state_entry.stats->entry.state = STATE_DEFAULT;
 
     table->null_state_entry.state = STATE_NULL;
@@ -1933,8 +1933,6 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
         OFL_LOG_DBG(LOG_MODULE, "Lookup-scope set");
 
         table->default_state_entry.stats->table_id = ke->table_id;
-        table->default_state_entry.stats->field_count = ke->field_count;
-        memcpy(table->default_state_entry.stats->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
     }
     dest->table_id = ke->table_id;
     dest->field_count = ke->field_count;
@@ -2386,8 +2384,6 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             (*stats)[(*stats_num)]->table_id = table_id;
             (*stats)[(*stats_num)]->duration_sec = (now_us - entry->created) / 1000000;
             (*stats)[(*stats_num)]->duration_nsec = ((now_us - entry->created) % 1000000) * 1000;
-            (*stats)[(*stats_num)]->field_count = extractor->field_count;
-            memcpy((*stats)[(*stats_num)]->fields, extractor->fields, sizeof(uint32_t) * extractor->field_count);
             // timeouts and rollbacks have been already set
             (*stats)[(*stats_num)]->entry.state = entry->state;
             memcpy((*stats)[(*stats_num)]->entry.key, entry->key, extractor->key_len);
@@ -2446,10 +2442,8 @@ ofl_structs_state_stats_pack(struct ofl_exp_state_stats const *src, uint8_t *dst
     state_stats->duration_nsec = htonl(src->duration_nsec);
 
     state_stats->pad = 0;
-    state_stats->field_count = htonl(src->field_count);
+    state_stats->pad2 = 0;
 
-    for (i=0;i<src->field_count;i++)
-           state_stats->fields[i]=htonl(src->fields[i]);
     state_stats->entry.key_len = htonl(src->entry.key_len);
     memcpy(state_stats->entry.key, src->entry.key, src->entry.key_len);
     state_stats->entry.state = htonl(src->entry.state);
@@ -2754,8 +2748,8 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
         fprintf(stream, "{\x1B[31mtable\x1B[0m=\"");
         ofl_table_print(stream, s->table_id);
         fprintf(stream, "\", \x1B[31mkey\x1B[0m={");
-
-        for(i=0;i<s->field_count;i++)
+        //TODO: we need a reference to the pipeline to get the extractors
+        /*for(i=0;i<s->field_count;i++)
         {
             if(s->entry.key_len==0)
                 ofl_structs_state_entry_print_default(stream,s->fields[i]);
@@ -2763,7 +2757,15 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
                 ofl_structs_state_entry_print(stream,s->fields[i], s->entry.key+offset, &offset);
             if (s->field_count!=1 && i<s->field_count-1)
                 fprintf(stream, ", ");
+        }*/
+        if (s->entry.key_len==0)
+            fprintf(stream, "*");
+        else {
+            fprintf(stream, "0x");
+            for (i = 0; i < s->entry.key_len; i++)
+                fprintf(stream, "%02X", s->entry.key[i]);
         }
+
         fprintf(stream, "}, \x1B[31mstate\x1B[0m=\"");
         fprintf(stream, "%"PRIu32"\"", s->entry.state);
         if(s->entry.key_len!=0)
@@ -2775,8 +2777,8 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
         fprintf(stream, "{table=\"");
         ofl_table_print(stream, s->table_id);
         fprintf(stream, "\", key={");
-
-        for(i=0;i<s->field_count;i++)
+        //TODO: we need a reference to the pipeline to get the extractors
+        /*for(i=0;i<s->field_count;i++)
         {
             if(s->entry.key_len==0)
                 ofl_structs_state_entry_print_default(stream,s->fields[i]);
@@ -2784,7 +2786,15 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
                 ofl_structs_state_entry_print(stream,s->fields[i], s->entry.key+offset, &offset);
             if (s->field_count!=1 && i<s->field_count-1)
                 fprintf(stream, ", ");
+        }*/
+        if (s->entry.key_len==0)
+            fprintf(stream, "*");
+        else {
+            fprintf(stream, "0x");
+            for (i = 0; i < s->entry.key_len; i++)
+                fprintf(stream, "%02X", s->entry.key[i]);
         }
+
         fprintf(stream, "}, state=\"");
         fprintf(stream, "%"PRIu32"\"", s->entry.state);
         if(s->entry.key_len!=0)
@@ -2825,9 +2835,6 @@ ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t co
     s->table_id =  src->table_id;
     s->duration_sec = ntohl(src->duration_sec);
     s->duration_nsec = ntohl(src->duration_nsec);
-    s->field_count = ntohl(src->field_count);
-    for (i=0;i<s->field_count;i++)
-               s->fields[i]=ntohl(src->fields[i]);
 
     s->entry.key_len = ntohl(src->entry.key_len);
     for (i=0;i<s->entry.key_len;i++)

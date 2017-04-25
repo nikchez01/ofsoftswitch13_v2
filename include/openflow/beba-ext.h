@@ -287,15 +287,14 @@ struct ofp_exp_state_stats {
     uint8_t pad;
     uint32_t duration_sec;  /* Time state entry has been alive in secs. */
     uint32_t duration_nsec; /* Time state entry has been alive in nsecs beyond duration_sec. */
-    uint32_t field_count;    /*number of extractor fields*/
-    uint32_t fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/ 
+    uint32_t pad2;
     struct ofp_exp_state_entry entry;
     uint32_t hard_rollback;
     uint32_t idle_rollback;
     uint32_t hard_timeout; // [us]
     uint32_t idle_timeout; // [us]
 };
-OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 112);
+OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 88);
 
 /****************************************************************
  *
