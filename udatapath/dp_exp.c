@@ -225,7 +225,9 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
             struct ofl_exp_beba_msg_multipart_request *exp = (struct ofl_exp_beba_msg_multipart_request *)msg;
 
             switch(exp->type) {
+                case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
                 case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+                case (OFPMP_EXP_STATE_STATS_SHORT):
                 case (OFPMP_EXP_STATE_STATS): {
                     struct ofl_exp_msg_multipart_reply_state *replies;
                     size_t i;
@@ -234,7 +236,7 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                     err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &replies, &replies_num);
                     for(j=0; j < replies_num; j++) {
                         dp_send_message(dp, (struct ofl_msg_header *)&replies[j], sender);
-                        if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
+                        if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE || exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT) {
                             for (i = 0; i < replies[j].stats_num; i++) {
                                 //DEFAULT state entries must not be removed
                                 if (replies[j].stats[i]->entry.key_len != 0)

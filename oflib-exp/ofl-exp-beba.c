@@ -823,7 +823,9 @@ ofl_exp_beba_stats_req_pack(struct ofl_msg_multipart_request_experimenter const 
 {
     struct ofl_exp_beba_msg_multipart_request *e = (struct ofl_exp_beba_msg_multipart_request *)ext;
     switch (e->type){
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):
         {
             struct ofl_exp_msg_multipart_request_state *msg = (struct ofl_exp_msg_multipart_request_state *)e;
@@ -838,11 +840,7 @@ ofl_exp_beba_stats_req_pack(struct ofl_msg_multipart_request_experimenter const 
             stats = (struct ofp_exp_state_stats_request *)req->body;
             exp_header = (struct ofp_experimenter_stats_header *)stats;
             exp_header -> experimenter = htonl(BEBA_VENDOR_ID);
-            exp_header -> exp_type = htonl(OFPMP_EXP_STATE_STATS);
-            if (e->type == OFPMP_EXP_STATE_STATS)
-                exp_header -> exp_type = htonl(OFPMP_EXP_STATE_STATS);
-            else if (e->type == OFPMP_EXP_STATE_STATS_AND_DELETE)
-                exp_header -> exp_type = htonl(OFPMP_EXP_STATE_STATS_AND_DELETE);
+            exp_header -> exp_type = htonl(e->type);
             stats->table_id = msg->table_id;
             stats->get_from_state = msg->get_from_state;
             stats->state = htonl(msg->state);
@@ -896,14 +894,35 @@ ofl_exp_beba_stats_reply_pack(struct ofl_msg_multipart_reply_experimenter const 
             ext_header = (struct ofp_experimenter_stats_header*) data;
             ext_header->experimenter = htonl(BEBA_VENDOR_ID);
             ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS);
-            if (e->type == OFPMP_EXP_STATE_STATS)
-                ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS);
-            else if (e->type == OFPMP_EXP_STATE_STATS_AND_DELETE)
-                ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS_AND_DELETE);
+            ext_header->exp_type = htonl(e->type);
 
             data += sizeof(struct ofp_experimenter_stats_header);
             for (i=0; i<msg->stats_num; i++) {
                 data += ofl_structs_state_stats_pack(msg->stats[i], data, exp);
+            }
+            return 0;
+        }
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
+        {
+            struct ofl_exp_msg_multipart_reply_state *msg = (struct ofl_exp_msg_multipart_reply_state *)e;
+            struct ofp_experimenter_stats_header *ext_header;
+            struct ofp_multipart_reply *resp;
+            size_t i;
+            uint8_t * data;
+
+            *buf_len = sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header) + ofl_structs_state_stats_short_ofp_total_len(msg->stats, msg->stats_num, exp);
+            *buf     = (uint8_t *)malloc(*buf_len);
+            resp = (struct ofp_multipart_reply *)(*buf);
+            data = (uint8_t*) resp->body;
+            ext_header = (struct ofp_experimenter_stats_header*) data;
+            ext_header->experimenter = htonl(BEBA_VENDOR_ID);
+            ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS);
+            ext_header->exp_type = htonl(e->type);
+
+            data += sizeof(struct ofp_experimenter_stats_header);
+            for (i=0; i<msg->stats_num; i++) {
+                data += ofl_structs_state_stats_short_pack(msg->stats[i], data, exp);
             }
             return 0;
         }
@@ -937,7 +956,9 @@ ofl_exp_beba_stats_req_unpack(struct ofp_multipart_request const *os, uint8_t co
 {
     struct ofp_experimenter_stats_header *ext = (struct ofp_experimenter_stats_header *)os->body;
     switch (ntohl(ext->exp_type)){
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):
         {
             struct ofp_exp_state_stats_request *sm;
@@ -1037,6 +1058,46 @@ ofl_exp_beba_stats_reply_unpack(struct ofp_multipart_reply const *os, uint8_t co
             *msg = (struct ofl_msg_multipart_reply_header *)dm;
             return 0;
         }
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
+        {
+            //TODO: dpctl stats-state prints just the last reply. We need to handle segmented multipart replies.
+            // Maybe we can build an unique reassembled ofl_exp_msg_multipart_reply_state
+            struct ofp_exp_state_stats_short *stat;
+            struct ofl_exp_msg_multipart_reply_state *dm;
+            ofl_err error;
+            size_t i, ini_len;
+            uint8_t const *ptr;
+
+            // ofp_multipart_reply was already checked and subtracted in unpack_multipart_reply
+            stat = (struct ofp_exp_state_stats_short *) (os->body + sizeof(struct ofp_experimenter_stats_header));
+            dm = (struct ofl_exp_msg_multipart_reply_state *)malloc(sizeof(struct ofl_exp_msg_multipart_reply_state));
+            dm->header.type = ntohl(ext->exp_type);
+            dm->header.header.experimenter_id = ntohl(ext->experimenter);
+            *len -= (sizeof(struct ofp_experimenter_stats_header));
+            error = ofl_utils_count_ofp_state_stats_short(stat, *len, &dm->stats_num);
+            if (error) {
+                free(dm);
+                return error;
+            }
+            dm->stats = (struct ofl_exp_state_stats **)malloc(dm->stats_num * sizeof(struct ofl_exp_state_stats *));
+
+            ini_len = *len;
+            ptr = buf + sizeof(struct ofp_multipart_reply) + sizeof(struct ofp_experimenter_stats_header);
+            for (i = 0; i < dm->stats_num; i++) {
+                error = ofl_structs_state_stats_short_unpack(stat, ptr, len, &(dm->stats[i]), exp);
+                ptr += ini_len - *len;
+                ini_len = *len;
+                if (error) {
+                    free (dm);
+                    return error;
+                }
+                stat = (struct ofp_exp_state_stats_short *)((uint8_t *)stat + ntohs(stat->length));
+            }
+
+            *msg = (struct ofl_msg_multipart_reply_header *)dm;
+            return 0;
+        }
         case (OFPMP_EXP_GLOBAL_STATE_STATS):
         {
             struct ofp_exp_global_state_stats *sm;
@@ -1070,7 +1131,9 @@ ofl_exp_beba_stats_request_to_string(struct ofl_msg_multipart_request_experiment
     size_t str_size;
     FILE *stream = open_memstream(&str, &str_size);
     switch (e->type){
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):
         {
             struct ofl_exp_msg_multipart_request_state const *msg = (struct ofl_exp_msg_multipart_request_state const *)e;
@@ -1132,6 +1195,34 @@ ofl_exp_beba_stats_reply_to_string(struct ofl_msg_multipart_reply_experimenter c
             fprintf(stream, "]");
             break;
         }
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
+        {
+            struct ofl_exp_msg_multipart_reply_state *msg = (struct ofl_exp_msg_multipart_reply_state *)e;
+            size_t i;
+            size_t last_table_id = -1;
+
+            fprintf(stream, "{exp_type=\"");
+            ofl_exp_stats_type_print(stream, e->type);
+            fprintf(stream, "\", stats=[");
+
+            for (i=0; i<msg->stats_num; i++) {
+
+                if(last_table_id != msg->stats[i]->table_id && ofl_colored_output())
+                    fprintf(stream, "\n\n\x1B[33mTABLE = %d\x1B[0m\n\n",msg->stats[i]->table_id);
+                last_table_id = msg->stats[i]->table_id;
+                ofl_structs_state_stats_short_print(stream, msg->stats[i], exp);
+                if (i < msg->stats_num - 1) {
+                    if(ofl_colored_output())
+                        fprintf(stream, ",\n\n");
+                    else
+                        fprintf(stream, ", "); };
+            }
+            if(ofl_colored_output())
+                fprintf(stream, "\n\n");
+            fprintf(stream, "]");
+            break;
+        }
         case (OFPMP_EXP_GLOBAL_STATE_STATS):
         {
             struct ofl_exp_msg_multipart_reply_global_state *msg = (struct ofl_exp_msg_multipart_reply_global_state *)e;
@@ -1154,7 +1245,9 @@ ofl_exp_beba_stats_req_free(struct ofl_msg_multipart_request_header *msg)
     struct ofl_msg_multipart_request_experimenter* exp = (struct ofl_msg_multipart_request_experimenter *) msg;
     struct ofl_exp_beba_msg_multipart_request *ext = (struct ofl_exp_beba_msg_multipart_request *)exp;
     switch (ext->type) {
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):
         {
             struct ofl_exp_msg_multipart_request_state *a = (struct ofl_exp_msg_multipart_request_state *) ext;
@@ -1183,7 +1276,9 @@ ofl_exp_beba_stats_reply_free(struct ofl_msg_multipart_reply_header *msg)
     struct ofl_exp_beba_msg_multipart_reply *ext = (struct ofl_exp_beba_msg_multipart_reply *)exp;
     int i;
     switch (ext->type) {
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):
         {
             struct ofl_exp_msg_multipart_reply_state *a = (struct ofl_exp_msg_multipart_reply_state *) ext;
@@ -2266,11 +2361,11 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
     if (msg->table_id == 0xff) {
         for (i=0; i<PIPELINE_TABLES; i++) {
             if (state_table_is_enabled(pl->tables[i]->state_table))
-                state_table_stats(pl->tables[i]->state_table, msg, &stats, &stats_size, &stats_num, i, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE);
+                state_table_stats(pl->tables[i]->state_table, msg, &stats, &stats_size, &stats_num, i, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE || msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT);
         }
     } else {
         if (state_table_is_enabled(pl->tables[msg->table_id]->state_table))
-            state_table_stats(pl->tables[msg->table_id]->state_table, msg, &stats, &stats_size, &stats_num, msg->table_id, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE);
+            state_table_stats(pl->tables[msg->table_id]->state_table, msg, &stats, &stats_size, &stats_num, msg->table_id, msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE || msg->header.type == OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT);
     }
 
     // We must return at least one reply, even if empty
@@ -2419,11 +2514,26 @@ ofl_structs_state_stats_ofp_len(struct ofl_exp_state_stats *stats UNUSED, struct
 }
 
 size_t
+ofl_structs_state_stats_short_ofp_len(struct ofl_exp_state_stats *stats UNUSED, struct ofl_exp const *exp UNUSED)
+{
+    return ROUND_UP((sizeof(struct ofp_exp_state_stats_short)+stats->entry.key_len),8);
+}
+
+size_t
 ofl_structs_state_stats_ofp_total_len(struct ofl_exp_state_stats ** stats UNUSED, size_t stats_num, struct ofl_exp const *exp UNUSED)
 {
     size_t sum;
     OFL_UTILS_SUM_ARR_FUN2(sum, stats, stats_num,
             ofl_structs_state_stats_ofp_len, exp);
+    return sum;
+}
+
+size_t
+ofl_structs_state_stats_short_ofp_total_len(struct ofl_exp_state_stats ** stats UNUSED, size_t stats_num, struct ofl_exp const *exp UNUSED)
+{
+    size_t sum;
+    OFL_UTILS_SUM_ARR_FUN2(sum, stats, stats_num,
+                           ofl_structs_state_stats_short_ofp_len, exp);
     return sum;
 }
 
@@ -2447,6 +2557,24 @@ ofl_structs_state_stats_pack(struct ofl_exp_state_stats const *src, uint8_t *dst
     state_stats->state = htonl(src->entry.state);
     dst += sizeof(struct ofp_exp_state_stats);
     memset(dst, 0, total_len-sizeof(struct ofp_exp_state_stats));
+    memcpy(dst, src->entry.key, src->entry.key_len);
+    return total_len;
+}
+
+size_t
+ofl_structs_state_stats_short_pack(struct ofl_exp_state_stats const *src, uint8_t *dst, struct ofl_exp const *exp UNUSED)
+{
+    struct ofp_exp_state_stats_short *state_stats;
+    size_t total_len;
+    size_t  i;
+    total_len = ROUND_UP(sizeof(struct ofp_exp_state_stats_short)+src->entry.key_len,8);
+    state_stats = (struct ofp_exp_state_stats_short*) dst;
+    state_stats->length = htons(total_len);
+    state_stats->table_id = src->table_id;
+    state_stats->key_len = src->entry.key_len;
+    state_stats->state = htonl(src->entry.state);
+    dst += sizeof(struct ofp_exp_state_stats_short);
+    memset(dst, 0, total_len-sizeof(struct ofp_exp_state_stats_short));
     memcpy(dst, src->entry.key, src->entry.key_len);
     return total_len;
 }
@@ -2801,6 +2929,68 @@ ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struc
     fprintf(stream, "}");
 }
 
+void
+ofl_structs_state_stats_short_print(FILE *stream, struct ofl_exp_state_stats *s, struct ofl_exp const *exp UNUSED)
+{
+    size_t i;
+    uint8_t offset=0;
+    if(ofl_colored_output())
+    {
+        fprintf(stream, "{\x1B[31mtable\x1B[0m=\"");
+        ofl_table_print(stream, s->table_id);
+        fprintf(stream, "\", \x1B[31mkey\x1B[0m={");
+        //TODO: we need a reference to the pipeline to get the extractors
+        /*for(i=0;i<s->field_count;i++)
+        {
+            if(s->entry.key_len==0)
+                ofl_structs_state_entry_print_default(stream,s->fields[i]);
+            else
+                ofl_structs_state_entry_print(stream,s->fields[i], s->entry.key+offset, &offset);
+            if (s->field_count!=1 && i<s->field_count-1)
+                fprintf(stream, ", ");
+        }*/
+        if (s->entry.key_len==0)
+            fprintf(stream, "*");
+        else {
+            fprintf(stream, "0x");
+            for (i = 0; i < s->entry.key_len; i++)
+                fprintf(stream, "%02X", s->entry.key[i]);
+        }
+
+        fprintf(stream, "}, \x1B[31mstate\x1B[0m=\"");
+        fprintf(stream, "%"PRIu32"\"", s->entry.state);
+    }
+
+    else
+    {
+        fprintf(stream, "{table=\"");
+        ofl_table_print(stream, s->table_id);
+        fprintf(stream, "\", key={");
+        //TODO: we need a reference to the pipeline to get the extractors
+        /*for(i=0;i<s->field_count;i++)
+        {
+            if(s->entry.key_len==0)
+                ofl_structs_state_entry_print_default(stream,s->fields[i]);
+            else
+                ofl_structs_state_entry_print(stream,s->fields[i], s->entry.key+offset, &offset);
+            if (s->field_count!=1 && i<s->field_count-1)
+                fprintf(stream, ", ");
+        }*/
+        if (s->entry.key_len==0)
+            fprintf(stream, "*");
+        else {
+            fprintf(stream, "0x");
+            for (i = 0; i < s->entry.key_len; i++)
+                fprintf(stream, "%02X", s->entry.key[i]);
+        }
+
+        fprintf(stream, "}, state=\"");
+        fprintf(stream, "%"PRIu32"\"", s->entry.state);
+    }
+
+    fprintf(stream, "}");
+}
+
 ofl_err
 ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t const *buf UNUSED, size_t *len, struct ofl_exp_state_stats **dst, struct ofl_exp const *exp UNUSED)
 {
@@ -2855,6 +3045,59 @@ ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t co
 }
 
 ofl_err
+ofl_structs_state_stats_short_unpack(struct ofp_exp_state_stats_short const *src, uint8_t const *buf UNUSED, size_t *len, struct ofl_exp_state_stats **dst, struct ofl_exp const *exp UNUSED)
+{
+    struct ofl_exp_state_stats *s;
+    size_t slen;
+    size_t i;
+    if (*len < sizeof(struct ofp_exp_state_stats_short) ) {
+        OFL_LOG_WARN(LOG_MODULE, "Received state stats has invalid length (%zu).", *len);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+
+    if (*len < ntohs(src->length)) {
+        OFL_LOG_WARN(LOG_MODULE, "Received state stats reply has invalid length (set to %u, but only %zu received).", ntohs(src->length), *len);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+
+    if (src->table_id >= PIPELINE_TABLES) {
+        if (OFL_LOG_IS_WARN_ENABLED(LOG_MODULE)) {
+            char *ts = ofl_table_to_string(src->table_id);
+            OFL_LOG_WARN(LOG_MODULE, "Received state stats has invalid table_id (%s).", ts);
+            free(ts);
+        }
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_TABLE_ID);
+    }
+
+    slen = ntohs(src->length) - ROUND_UP(sizeof(struct ofp_exp_state_stats_short)+src->key_len,8);
+
+    s = (struct ofl_exp_state_stats *)malloc(sizeof(struct ofl_exp_state_stats));
+    s->table_id =  src->table_id;
+    s->duration_sec = 0; //this info is omitted in the short version of ofp_exp_state_stats
+    s->duration_nsec = 0; //this info is omitted in the short version of ofp_exp_state_stats
+
+    s->entry.key_len = src->key_len;
+    for (i=0;i<s->entry.key_len;i++)
+        s->entry.key[i]=src->key[i];
+    s->entry.state = ntohl(src->state);
+
+    s->idle_timeout = 0; //this info is omitted in the short version of ofp_exp_state_stats
+    s->idle_rollback = 0; //this info is omitted in the short version of ofp_exp_state_stats
+    s->hard_timeout = 0; //this info is omitted in the short version of ofp_exp_state_stats
+    s->hard_rollback = 0; //this info is omitted in the short version of ofp_exp_state_stats
+
+    if (slen != 0) {
+        *len = *len - ntohs(src->length) + slen;
+        OFL_LOG_WARN(LOG_MODULE, "The received state stats contained extra bytes (%zu).", slen);
+        free(s);
+        return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+    }
+    *len -= ntohs(src->length);
+    *dst = s;
+    return 0;
+}
+
+ofl_err
 ofl_utils_count_ofp_state_stats(void *data, size_t data_len, size_t *count)
 {
     struct ofp_exp_state_stats *stat;
@@ -2876,11 +3119,35 @@ ofl_utils_count_ofp_state_stats(void *data, size_t data_len, size_t *count)
     return 0;
 }
 
+ofl_err
+ofl_utils_count_ofp_state_stats_short(void *data, size_t data_len, size_t *count)
+{
+    struct ofp_exp_state_stats_short *stat;
+    uint8_t *d;
+
+    d = (uint8_t *)data;
+    *count = 0;
+    while (data_len >= sizeof(struct ofp_exp_state_stats_short)) {
+        stat = (struct ofp_exp_state_stats_short *)d;
+        if (data_len < ntohs(stat->length) || ntohs(stat->length) < sizeof(struct ofp_exp_state_stats_short)) {
+            OFL_LOG_WARN(LOG_MODULE, "Received state stat has invalid length.");
+            return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
+        }
+        data_len -= ntohs(stat->length);
+        d += ntohs(stat->length);
+        (*count)++;
+    }
+
+    return 0;
+}
+
 void
 ofl_exp_stats_type_print(FILE *stream, uint32_t type)
 {
     switch (type) {
+        case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
         case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+        case (OFPMP_EXP_STATE_STATS_SHORT):
         case (OFPMP_EXP_STATE_STATS):          { fprintf(stream, "state"); return; }
         case (OFPMP_EXP_GLOBAL_STATE_STATS):          { fprintf(stream, "global_state"); return; }
         default: {                    fprintf(stream, "?(%u)", type); return; }

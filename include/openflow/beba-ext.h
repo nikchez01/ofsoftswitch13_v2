@@ -253,7 +253,9 @@ enum ofp_exp_msg_pkttmp_mod_commands {
 enum ofp_stats_extension_commands {
     OFPMP_EXP_STATE_STATS,      
     OFPMP_EXP_GLOBAL_STATE_STATS,
-    OFPMP_EXP_STATE_STATS_AND_DELETE
+    OFPMP_EXP_STATE_STATS_AND_DELETE,
+    OFPMP_EXP_STATE_STATS_SHORT,
+    OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT
 };
 
 /* Body for ofp_multipart_request of type OFPMP_EXP_STATE_STATS. */
@@ -288,6 +290,15 @@ struct ofp_exp_state_stats {
     uint8_t  key[0];
 };
 OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 32);
+
+struct ofp_exp_state_stats_short {
+    uint16_t length;        /* Length of this entry. */
+    uint8_t  table_id;      /* ID of table flow came from. */
+    uint8_t  key_len;		/* Length of the flow key. */
+    uint32_t state;		   /* Flow state */
+    uint8_t  key[0];
+};
+OFP_ASSERT(sizeof(struct ofp_exp_state_stats_short) == 8);
 
 /****************************************************************
  *
