@@ -132,7 +132,6 @@ ofl_structs_set_flow_state_unpack(struct ofp_exp_set_flow_state const *src, size
     int i;
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
 
-
     if((*len == ((7*sizeof(uint32_t) + ntohl(src->key_len)*sizeof(uint8_t))) + 4*sizeof(uint8_t)) && (ntohl(src->key_len)>0))
     {
         if (src->table_id >= PIPELINE_TABLES) {
@@ -211,7 +210,6 @@ ofl_structs_set_global_state_unpack(struct ofp_exp_set_global_state const *src, 
     return 0;
 }
 
-
 static ofl_err
 ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor const *src, size_t *len, struct ofl_exp_set_header_field_extractor *dst) {
 
@@ -236,7 +234,6 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
         dst->table_id = src->table_id;
         dst->extractor_id = src->extractor_id;
         dst->field = ntohl(src->field);
-
     }
     else {
         //check of struct ofp_exp_set_header_field_extractor length.
@@ -450,7 +447,6 @@ check_operands(uint8_t operand_type, uint8_t operand_value, char * operand_name,
             break;
         case OPERAND_TYPE_HEADER_FIELD:
             if (allow_header_field){
-
                 if (operand_value >= OFPSC_MAX_HEADER_FIELDS) {
                     OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR action has invalid extractor id (%s) (%u).", operand_name, operand_value);
                     return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
@@ -1007,18 +1003,16 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                     break;
             }
 
-
             da->src_type = sa->src_type;
             da->src_id = sa->src_id;
             da->dst_field = ntohl(sa->dst_field);
-
 
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
             necessary CRC recalculation based on the header field.>>
             The same must apply for all the other OS metadata fields!
             */
-            //TODO Davide: what about METADATA? Should we need a dedicated WRITE CONTEXT TO METADATA? Maybe we can just remove the check below...
+            //We remove the check below to use WRITE CONTEXT TO FIELD avoiding a dedicated WRITE CONTEXT TO METADATA
             if(da->dst_field == OXM_OF_IN_PORT || da->dst_field == OXM_OF_IN_PHY_PORT
                                     // || da->dst_field == OXM_OF_METADATA  
                                     || da->dst_field == OXM_OF_IPV6_EXTHDR
@@ -1036,7 +1030,6 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                                     || da->dst_field == OXM_EXP_RANDOM
                                     || da->dst_field == OXM_EXP_PKT_LEN){
                     
-                
                 return ofl_error(OFPET_BAD_ACTION, OFPBAC_BAD_SET_TYPE);
                 break;
             }
@@ -1435,7 +1428,6 @@ ofl_exp_beba_stats_req_pack(struct ofl_msg_multipart_request_experimenter const 
             return -1;
     }
 }
-
 
 int
 ofl_exp_beba_stats_reply_pack(struct ofl_msg_multipart_reply_experimenter const *ext, uint8_t **buf,
@@ -2322,14 +2314,12 @@ void state_table_destroy(struct state_table *table) {
     free(table);
 }
 
-
 void swap_struct_biflow(struct struct_biflow *a, struct struct_biflow *b){
     struct struct_biflow c;
     c = *a;
     *a = *b;
     *b = c;
 }
-
 
 int a_min_b(struct struct_biflow *a, struct struct_biflow *b){
     int cnt = 0;
@@ -2346,7 +2336,6 @@ int a_min_b(struct struct_biflow *a, struct struct_biflow *b){
     return 0;
 }
 
-
 void selection_sort(struct struct_biflow *a, int field_count){
     int i = 0, min, j, z;
     int n = OFPSC_MAX_KEY_LEN;
@@ -2354,17 +2343,15 @@ void selection_sort(struct struct_biflow *a, int field_count){
     for(i=0; i < field_count; i++){
         min = i;
         for(j=i+1; j<n; j++){ 
-          if(a[j].type < a[min].type && a[j].type != 0){ 
-            min = j;
+            if(a[j].type < a[min].type && a[j].type != 0){
+                min = j;
             }
         }
         swap_struct_biflow(&a[min],&a[i]);
     }
 
-
     i = 0;
     while (i < field_count){
-
         if(a[i].type == 0) 
             return;
 
@@ -2379,7 +2366,6 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_IPV4_SRC:
                 if (a[i+1].type == OXM_OF_IPV4_DST) {
-                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                       
@@ -2388,7 +2374,6 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_TCP_SRC:
                 if (a[i+1].type == OXM_OF_TCP_DST) {
-                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                       
@@ -2397,7 +2382,6 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_UDP_SRC:
                 if (a[i+1].type == OXM_OF_UDP_DST) {
-                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                        
@@ -2406,7 +2390,6 @@ void selection_sort(struct struct_biflow *a, int field_count){
                 break;
             case OXM_OF_IPV6_SRC:
                 if (a[i+1].type == OXM_OF_IPV6_DST) {
-                    
                     if ( a_min_b(&a[i],&a[i+1]) ) {
                         swap_struct_biflow(&a[i],&a[i+1]);
                     }                        
@@ -2416,9 +2399,7 @@ void selection_sort(struct struct_biflow *a, int field_count){
         }
         i++;
     }
-
 }
-
 
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt) {
@@ -2436,35 +2417,27 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
                 hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
                     if (type == f->header) {
                         if (OXM_VENDOR(f->header)==0xFFFF){
-                            
                             xbiflow[i].type = f->header;
                             xbiflow[i].value = f->value+EXP_ID_LEN;
-                            
                             xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
-
-                        }
-                        else {
+                        } else {
                             xbiflow[i].type = f->header;
                             xbiflow[i].value = f->value;
                             xbiflow[i].len = (OXM_LENGTH(f->header));
                         }
-                        
                         break;
                     }
             }
         }        
 
-        
         selection_sort(&xbiflow, extractor->field_count);
         extracted_key_len = 0;
 
         for (i=0; i<extractor->field_count; i++) {
             memcpy(&buf[extracted_key_len], xbiflow[i].value, xbiflow[i].len);            
             extracted_key_len = extracted_key_len + xbiflow[i].len;
-
         }
 
-    
     } else {
         for (i = 0; i < extractor->field_count; i++) {
             uint32_t type = (int) extractor->fields[i];
@@ -2473,8 +2446,7 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
                     if (type == f->header) {
                         if (OXM_VENDOR(f->header)==0xFFFF){
                             memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
-                        }
-                        else {
+                        } else {
                             memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
                         }
                         extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
@@ -2483,7 +2455,6 @@ int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *
             }
         }
     }
-
     /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
     return extracted_key_len == extractor->key_len;
 }
@@ -2590,7 +2561,6 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
             break;
         }
         case OPERAND_TYPE_HEADER_FIELD: {
-
             if (table->header_field_extractor[operand_id].field_count != 1) {
                 OFL_LOG_DBG(LOG_MODULE,"Retrieving %s: header field exractor not configured (%u).",
                             operand_name, operand_id);
@@ -2632,9 +2602,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                     break;
                 }
             }
-
             OFL_LOG_DBG(LOG_MODULE, "operand_value = %d\n", *operand_value);
-
             break;
         }
         case OPERAND_TYPE_CONSTANT: {
@@ -3456,7 +3424,6 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     return 0;
 }
 
-
 struct ofl_action_set_field * state_table_write_context_to_field(struct state_table *table, struct ofl_exp_action_write_context_to_field *act, struct packet *pkt) {
     struct state_entry *state_entry;
     struct ofl_action_set_field *set_field_act;
@@ -3718,7 +3685,6 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
 
     uint8_t offset[OFPSC_MAX_FIELD_COUNT] = {0};
     uint8_t length[OFPSC_MAX_FIELD_COUNT] = {0};
-
 
     for (i=0; i<extractor->field_count; i++) {
         fields[i] = (int)extractor->fields[i];
@@ -4290,7 +4256,6 @@ ofl_exp_stats_type_print(FILE *stream, uint32_t type)
     }
 }
 
-
 /*Functions used by experimenter match fields*/
 
 struct ofl_match_tlv *
@@ -4513,7 +4478,6 @@ pkttmp_entry_create(struct datapath *dp, struct pkttmp_table *table, struct ofl_
         memcpy(e->data, mod->data, e->data_length);
     }
     //e->data = mod->data_length > 0 ? (uint8_t *)memcpy(malloc(mod->data_length), mod->data, mod->data_length) : NULL;
-
 
     OFL_LOG_DBG(LOG_MODULE, "Creating PKTTMP entry with following values id %u, data_len %zu.",e->pkttmp_id, e->data_length);
 
