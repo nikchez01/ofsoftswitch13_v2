@@ -2614,6 +2614,11 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                     *operand_value = (uint32_t)operand_value64 & 0x0000ffff;
                     break;
                 }
+                case 6: {
+                    memcpy(&operand_value64, key, 6);
+                    *operand_value = (uint32_t)operand_value64 & 0x0000ffff;
+                    break;
+                }
                 case 4: {
                     memcpy(operand_value, key, 4);
                     break;
