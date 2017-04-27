@@ -14,14 +14,6 @@
 #define STATE_NULL UINT32_MAX
 #define CONDITION_NULL UINT8_MAX
 
-
-struct struct_biflow {
-    uint32_t type;
-    uint8_t *value;
-    uint16_t len;
-};
-
-
 /**************************************************************************/
 /*                        experimenter messages ofl_exp                   */
 /**************************************************************************/
@@ -193,7 +185,8 @@ struct ofl_exp_msg_multipart_reply_global_state {
 
 /*************************************************************************/
 /*                        experimenter actions ofl_exp                   */
-/*************************************************************************/
+/******************************************
+/**************************************/
 struct ofl_exp_beba_act_header {
     struct ofl_action_experimenter   header; /* BEBA_VENDOR_ID */
 
@@ -274,6 +267,12 @@ struct key_extractor {
     uint32_t                    field_count;
     uint32_t                    fields[OFPSC_MAX_FIELD_COUNT];
     uint32_t                    key_len;
+};
+
+struct struct_biflow {
+    uint32_t type;
+    uint8_t *value;
+    uint16_t len;
 };
 
 struct state_entry {
