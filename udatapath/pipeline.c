@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
@@ -125,7 +124,8 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
 {
     struct flow_table *table, *next_table;
     struct ofl_match_tlv *f;
-    uint32_t conditions_OXM_array[] = {OXM_EXP_CONDITION0,OXM_EXP_CONDITION1,OXM_EXP_CONDITION2,OXM_EXP_CONDITION3,OXM_EXP_CONDITION4,OXM_EXP_CONDITION5,OXM_EXP_CONDITION6,OXM_EXP_CONDITION7};
+    struct ofl_match_tlv *state_hdr = NULL;
+    struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
     bool gstate_set = false;
     int i = 0;
 
@@ -159,37 +159,22 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         next_table = NULL;
 
         /* BEBA EXTENSION BEGIN */
-
+#if BEBA_STATE_ENABLED != 0
         if (state_table_is_enabled(table->state_table)) {
             struct state_entry *state_entry;
             table->state_table->last_lookup_state_entry = NULL;
             table->state_table->last_update_state_entry = NULL;
             state_entry = state_table_lookup(table->state_table, pkt);
 
-            //TODO: avoid removing and rewriting to HashMap at every stage
-
-            //removes eventual old 'state' virtual header field
-            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                        hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
-                            hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
-            }
-    
-            //removes eventual old 'condition' virtual header field
-            for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,hmap_node, hash_int(conditions_OXM_array[i],0), &pkt->handle_std.match.match_fields){
-                    hmap_remove_and_shrink(&pkt->handle_std.match.match_fields,&f->hmap_node);
-                }
+            if (state_hdr == NULL) {
+                // Allocate state to packet headers (experimenter).
+                state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA,
+                                                        state_entry->state);
+            } else {
+                // Rewrite existing header.
+                state_table_write_state_header(state_entry, state_hdr);
             }
 
-            //set state in pkt header
-            ofl_structs_match_exp_put16(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA, 0x0000);
-            struct  ofl_match_tlv *f;   
-            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, 
-                hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields){
-                        uint16_t *state = (uint16_t*) (f->value + EXP_ID_LEN);
-                        *state = (*state & 0x0000) | (state_entry->state);
-            }
-           
             //TODO save global state header field ptr
             if (!gstate_set) {
                 // Append global states to packet headers.
@@ -201,16 +186,17 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                 }
             }
 
-            //condition evaluation 
+            //Conditions evaluation
             for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
-                if (table->state_table->condition_table[i]!=NULL) {
-                    VLOG_DBG_RL(LOG_MODULE, &rl, "Evaluating condition %d.", i);
-                    condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
-                    VLOG_DBG_RL(LOG_MODULE, &rl, "result = %d.", condition_evaluation_result);
-                    ofl_structs_match_exp_put8(&pkt->handle_std.match, conditions_OXM_array[i], 0xBEBABEBA, condition_evaluation_result);
-                }
+                condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
+
+                if (condition_hdr[i] == NULL) {
+                    struct oxm_field *f = &all_fields[i+8]; //conditions in all_fields[] starts after 2 fields + 3 maskable fields
+                    condition_hdr[i] = ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
+                } else {
+                    state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
+                }              
             }
-    
 
         } else {
             // FIXME: avoid matching on state on non-stateful stages.
@@ -218,7 +204,7 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         }
 
         /* BEBA EXTENSION END */
-
+#endif
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
             char *m = ofl_structs_match_to_string((struct ofl_match_header *) &(pkt->handle_std.match), pkt->dp->exp);
             VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.",
@@ -247,7 +233,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
                  because we cannot associate it to any
                  particular flow */
                 action_set_execute(&pkt->action_set, pkt, 0xffffffffffffffff);
-
                 return;
             }
 
