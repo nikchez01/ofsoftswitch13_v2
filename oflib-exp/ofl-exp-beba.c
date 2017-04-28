@@ -108,7 +108,7 @@ ofl_structs_extraction_unpack(struct ofp_exp_set_extractor const *src, size_t *l
         }
         dst->table_id = src->table_id;
         dst->field_count=ntohl(src->field_count);
-        dst->biflow = src->biflow;  //da surce a dst
+        dst->biflow = src->biflow;  // surce to dst
         dst->bit = src->bit;
         for (i=0;i<dst->field_count;i++)
         {
