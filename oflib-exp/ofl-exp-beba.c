@@ -937,7 +937,7 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                     return error;
             }
 
-            if (sa->opcode==OPCODE_EWMA && (operand_2<0 || operand_2>EWMA_PARAM_0875))
+            if (sa->opcode==OPCODE_EWMA && (sa->operand_2<0 || sa->operand_2>EWMA_PARAM_0875))
                 OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR (opcode EWMA) action has invalid alpha parameter: 0 <= operand_2 <= 6. Using EWMA_PARAM_0500.");
 
             da->table_id = sa->table_id;
