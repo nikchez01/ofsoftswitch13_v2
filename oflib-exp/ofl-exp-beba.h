@@ -13,7 +13,6 @@
 #define STATE_DEFAULT 0
 #define STATE_NULL UINT32_MAX
 #define CONDITION_NULL UINT8_MAX
-
 /**************************************************************************/
 /*                        experimenter messages ofl_exp                   */
 /**************************************************************************/
@@ -185,8 +184,7 @@ struct ofl_exp_msg_multipart_reply_global_state {
 
 /*************************************************************************/
 /*                        experimenter actions ofl_exp                   */
-/******************************************
-/**************************************/
+/*************************************************************************/
 struct ofl_exp_beba_act_header {
     struct ofl_action_experimenter   header; /* BEBA_VENDOR_ID */
 

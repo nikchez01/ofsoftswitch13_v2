@@ -315,7 +315,6 @@ handle_control_msg(struct datapath *dp, struct ofl_msg_header *msg,
         }
         case OFPT_PACKET_OUT: {
             return handle_control_packet_out(dp, (struct ofl_msg_packet_out *)msg, sender);
-            break;
         }
         case OFPT_FLOW_REMOVED: {
             return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_TYPE);
