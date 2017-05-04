@@ -3001,16 +3001,45 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             break;}
         case OPCODE_EWMA:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_EWMA");
-            // ewma( [last_ewma] , [current_sample] , [deltaT] )
+            // ewma( [last_ewma] , [EWMA_PARAM_****],  [current_sample] )
             // output = (1 - alpha)*current_sample + alpha(last_ewma)
 
-            // if deltaT < 1 s calculate ewma
-            if (operand_3_value<10000000) {
-                result1= (uint32_t) ((1 - 0.3)*operand_2_value + (0.3*operand_1_value));
-            // else result = current_sample
-            } else {
-                result1 = (uint32_t) operand_2_value;
+            switch (operand_2_value) {
+                case EWMA_PARAM_0125:{
+                    result1 = (uint32_t) (operand_1_value >> 3)     + (operand_3_value >> 3)*7;
+                    break;
+                }    
+                case EWMA_PARAM_0250:{
+                    result1 = (uint32_t) (operand_1_value >> 2)     + (operand_3_value >> 2)*3;
+                    break;
+                }    
+                case EWMA_PARAM_0375:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*3   + (operand_3_value >> 3)*5;
+                    break;
+                }    
+                case EWMA_PARAM_0500:{
+                    result1 = (uint32_t) (operand_1_value >> 1)     + (operand_3_value >> 1);
+                    break;
+                }    
+                case EWMA_PARAM_0625:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*5   + (operand_3_value >> 3)*3;
+                    break;
+                }    
+                case EWMA_PARAM_0750:{
+                    result1 = (uint32_t) (operand_1_value >> 2)*3   + (operand_3_value >> 2);
+                    break;
+                }    
+                case EWMA_PARAM_0875:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*7   + (operand_3_value >> 3);
+                    break;
+                }    
+                default:{
+                    // Default returns a 50/50 average
+                    result1 = (uint32_t) (operand_1_value >> 1)     + (operand_3_value >> 1);
+                    break;
+                }    
             }
+
             break;}
         case OPCODE_POLY_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_POLY_SUM");

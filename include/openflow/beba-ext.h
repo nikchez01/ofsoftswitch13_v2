@@ -342,6 +342,16 @@ enum ofp_exp_opcode {
     OPCODE_POLY_SUM
 };
 
+enum ofp_exp_ewma_params {
+    EWMA_PARAM_0125 = 0, 
+    EWMA_PARAM_0250,
+    EWMA_PARAM_0375,
+    EWMA_PARAM_0500,
+    EWMA_PARAM_0625,
+    EWMA_PARAM_0750,
+    EWMA_PARAM_0875
+};
+
 enum ofp_exp_source_types {
     SOURCE_TYPE_FLOW_DATA_VAR = 0,
     SOURCE_TYPE_GLOBAL_DATA_VAR,
