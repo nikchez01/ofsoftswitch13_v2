@@ -387,7 +387,6 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 break;
             }
             case OXM_OF_MPLS_LABEL:{
-
                 struct mpls_header *mpls = pkt->handle_std.proto.mpls;
                 uint32_t v = *((uint32_t*) act->field->value);
                 mpls->fields = (mpls->fields & ~ntohl(MPLS_LABEL_MASK)) |
@@ -417,10 +416,10 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 struct  ofl_match_tlv *f;
                 HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
                     hmap_node, hash_int(OXM_OF_TUNNEL_ID, 0), &(pkt)->handle_std.match.match_fields){
-                    fprintf(stderr, "TUNNEL = %"PRIu64"\n", *f->value);
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "TUNNEL = %"PRIu64"\n", *f->value);
                     uint64_t *tunnel_id = (uint64_t*) f->value;
                     *tunnel_id = *((uint64_t*) act->field->value);
-                    fprintf(stderr, "TUNNEL2 = %"PRIu64"\n", *f->value);
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "TUNNEL2 = %"PRIu64"\n", *f->value);
                 }
                 break;
             }
@@ -1119,8 +1118,7 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
             msg.cookie = cookie;
 
             if (pkt->dp->config.miss_send_len != OFPCML_NO_BUFFER){
-                dp_buffers_save(pkt->dp->buffers, pkt);
-                msg.buffer_id = pkt->buffer_id;
+                msg.buffer_id = dp_buffers_save(pkt->dp->buffers, packet_clone(pkt));
                 msg.data_length = MIN(max_len, pkt->buffer->size);
             }
             else {
