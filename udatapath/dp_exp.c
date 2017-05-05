@@ -150,6 +150,7 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                 VLOG_DBG_RL(LOG_MODULE, &rl, "action result: %s", p);
                 free(p);
             }
+			break;
         }
 #endif
         default: {
@@ -229,14 +230,12 @@ dp_exp_inst(struct packet *pkt UNUSED, struct ofl_instruction_experimenter *inst
 						VLOG_WARN_RL(LOG_MODULE, &rl, "No PKTTMP for pkttmp_id %u!", beba_insw_i->pkttmp_id);
 					}
 					return;
-
 				}
 			}
 
-
 			// TODO Perform packet generation instruction
 			VLOG_WARN_RL(LOG_MODULE, &rl, "Unknown BEBA instruction type!");
-			return;
+			break;
 		}
 #endif
 		default: {
@@ -291,6 +290,8 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
                     return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_EXPERIMENTER);
                 }
             }
+
+            break;
         }
 #endif
         default: {
@@ -323,6 +324,8 @@ dp_exp_message(struct datapath *dp, struct ofl_msg_experimenter *msg, const stru
                     return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_EXPERIMENTER);
                 }
             }
+
+            break;
         }
 #if BEBA_STATE_ENABLED != 0
         case (BEBA_VENDOR_ID): {
@@ -351,6 +354,8 @@ dp_exp_message(struct datapath *dp, struct ofl_msg_experimenter *msg, const stru
                     return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXP_MESSAGE);
                 }
             }
+
+			break;
         }
 #endif
         default: {
