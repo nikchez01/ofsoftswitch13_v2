@@ -126,7 +126,6 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
     struct ofl_match_tlv *f;
     struct ofl_match_tlv *state_hdr = NULL;
     struct ofl_match_tlv *condition_hdr[OFPSC_MAX_CONDITIONS_NUM] = {NULL};
-    bool gstate_set = false;
     int i = 0;
 
     if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
@@ -166,36 +165,49 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             table->state_table->last_update_state_entry = NULL;
             state_entry = state_table_lookup(table->state_table, pkt);
 
+            /************************************************* state *************************************************/
+            state_hdr = NULL;
+            //search for 'state' virtual header field
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                    hmap_node, hash_int(OXM_EXP_STATE,0), &pkt->handle_std.match.match_fields) {
+                state_hdr = f;
+            }
+
             if (state_hdr == NULL) {
                 // Allocate state to packet headers (experimenter).
                 state_hdr = ofl_structs_match_exp_put32(&pkt->handle_std.match, OXM_EXP_STATE, 0xBEBABEBA,
                                                         state_entry->state);
-            } else {
-                // Rewrite existing header.
-                state_table_write_state_header(state_entry, state_hdr);
             }
 
-            //TODO save global state header field ptr
-            if (!gstate_set) {
-                // Append global states to packet headers.
-                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
-                                        hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.match.match_fields) {
-                    uint32_t *flags = (uint32_t *) (f->value + EXP_ID_LEN);
-                    *flags = (*flags & 0x00000000) | (pkt->dp->global_state);
-                    gstate_set = true;
-                }
+            // Rewrite existing header.
+            state_table_write_state_header(state_entry, state_hdr);
+
+            /********************************************* global states *********************************************/
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
+                    hash_int(OXM_EXP_GLOBAL_STATE, 0), &pkt->handle_std.match.match_fields) {
+                uint32_t *global_state = (uint32_t *) (f->value + EXP_ID_LEN);
+                *global_state = pkt->dp->global_state;
             }
 
-            //Conditions evaluation
+            /*********************************************** conditions **********************************************/
             for (i=0;i<OFPSC_MAX_CONDITIONS_NUM;i++){
+                //'8' because conditions in all_fields[] starts after 2 fields + 3 maskable (2x positions) fields
+                struct oxm_field *condition_field = &all_fields[i+8];
+
                 condition_evaluation_result = state_table_evaluate_condition(table->state_table, pkt, table->state_table->condition_table[i]);
 
+                condition_hdr[i] = NULL;
+                HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv, hmap_node,
+                        hash_int(condition_field->header,0), &pkt->handle_std.match.match_fields) {
+                    condition_hdr[i] = f;
+                }
+
                 if (condition_hdr[i] == NULL) {
-                    struct oxm_field *f = &all_fields[i+8]; //conditions in all_fields[] starts after 2 fields + 3 maskable fields
-                    condition_hdr[i] = ofl_structs_match_exp_put8(&pkt->handle_std.match, f->header, 0xBEBABEBA, condition_evaluation_result);
-                } else {
-                    state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
-                }              
+                    condition_hdr[i] = ofl_structs_match_exp_put8(&pkt->handle_std.match, condition_field->header, 0xBEBABEBA,
+                                                                  condition_evaluation_result);
+                }
+
+                state_table_write_condition_header(condition_evaluation_result, condition_hdr[i]);
             }
 
         } else {
@@ -364,7 +376,7 @@ pipeline_handle_flow_mod(struct pipeline *pl, struct ofl_msg_flow_mod *msg,
                 VLOG_WARN_RL(LOG_MODULE, &rl, "The buffer flow_mod referred to was empty (%u).", msg->buffer_id);
             }
         }
-        
+
         send_flow_notification(pl->dp, msg, sender);
         ofl_msg_free_flow_mod(msg, !match_kept, !insts_kept, pl->dp->exp);
         return 0;
