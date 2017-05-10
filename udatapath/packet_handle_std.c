@@ -314,7 +314,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             next_proto = proto->ipv6->ipv6_next_hd;
 
             /*TODO: Check for extension headers*/
-        }
+
+        } break;
 
 	case ETH_TYPE_IP: {
 
@@ -336,7 +337,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 return 0;
             }
             next_proto = proto->ipv4->ip_proto;
-        }
+
+        } break;
 	}
 
 	switch (next_proto) {
