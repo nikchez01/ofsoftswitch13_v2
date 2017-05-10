@@ -167,7 +167,6 @@ struct ofl_exp_msg_multipart_request_global_data {
 
 
 struct ofl_exp_msg_multipart_reply_global_data {
-
 	struct ofl_exp_beba_msg_multipart_reply   header; /* OFPMP_STATE */
 	struct ofl_exp_global_data_stats *stats;
 };
@@ -533,8 +532,6 @@ handle_stats_request_global_state(struct pipeline *pl, const struct sender *send
 /* Handles a global data stats request. */
 ofl_err
 handle_stats_request_global_data(struct pipeline *pl, struct ofl_exp_msg_multipart_request_global_data *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_global_data *reply);
-
-
 
 void
 state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_request_state *msg,

@@ -400,7 +400,7 @@ enum ofp_stats_extension_commands {
     OFPMP_EXP_STATE_STATS,
     OFPMP_EXP_GLOBAL_STATE_STATS,
 	OFPMP_EXP_STATE_STATS_AND_DELETE,
-    OFPMP_EXP_GLOBAL_DATA_STATS
+	OFPMP_EXP_GLOBAL_DATA_STATS
 };
 
 struct ofp_exp_state_entry{
