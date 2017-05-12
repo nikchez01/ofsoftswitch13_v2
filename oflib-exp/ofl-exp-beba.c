@@ -2761,7 +2761,9 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
 {
     struct key_extractor *dest;
     uint32_t key_len = 0;
-
+	
+    //TODO check if the biflow fields are invertible
+	
     int i;
     for (i = 0; i < ke->field_count; i++) {
         key_len += OXM_LENGTH((int) ke->fields[i]);
