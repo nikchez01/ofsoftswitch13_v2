@@ -50,6 +50,7 @@ struct ofl_exp_stateful_table_config {
 
 struct ofl_exp_set_extractor {
     uint8_t table_id;
+    uint8_t biflow;
     uint8_t bit;
     uint32_t field_count;
     uint32_t fields[OFPSC_MAX_FIELD_COUNT];
@@ -259,10 +260,17 @@ struct condition_table_entry {
 
 struct key_extractor {
     uint8_t                     table_id;
+    uint8_t                     biflow;
     uint8_t                     bit;
     uint32_t                    field_count;
     uint32_t                    fields[OFPSC_MAX_FIELD_COUNT];
     uint32_t                    key_len;
+};
+
+struct struct_biflow {
+    uint32_t type;
+    uint8_t *value;
+    uint16_t len;
 };
 
 struct state_entry {

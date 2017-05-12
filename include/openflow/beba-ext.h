@@ -247,7 +247,8 @@ struct ofp_exp_stateful_table_config {
 
 struct ofp_exp_set_extractor {
     uint8_t table_id;
-    uint8_t pad[3];
+    uint8_t biflow;
+    uint8_t pad[2];
     uint8_t bit;
     uint8_t pad2[3];
     uint32_t field_count;
@@ -339,6 +340,16 @@ enum ofp_exp_opcode {
     OPCODE_VAR,
     OPCODE_EWMA,
     OPCODE_POLY_SUM
+};
+
+enum ofp_exp_ewma_params {
+    EWMA_PARAM_0125 = 0, 
+    EWMA_PARAM_0250,
+    EWMA_PARAM_0375,
+    EWMA_PARAM_0500,
+    EWMA_PARAM_0625,
+    EWMA_PARAM_0750,
+    EWMA_PARAM_0875
 };
 
 enum ofp_exp_source_types {

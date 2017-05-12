@@ -108,6 +108,7 @@ ofl_structs_extraction_unpack(struct ofp_exp_set_extractor const *src, size_t *l
         }
         dst->table_id = src->table_id;
         dst->field_count=ntohl(src->field_count);
+        dst->biflow = src->biflow;
         dst->bit = src->bit;
         for (i=0;i<dst->field_count;i++)
         {
@@ -221,11 +222,11 @@ ofl_structs_set_header_field_unpack(struct ofp_exp_set_header_field_extractor co
             OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid extractor id (%u).", src->extractor_id );
             return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_EXTRACTOR_ID);
         }
-        // header field extractor should be a field <=32 bit 
-        if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
-            OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid header field size (%u).", OXM_LENGTH(ntohl(src->field)));
-            return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_FIELD_SIZE);
-        }
+        // Header field extractor should be a field <=32 bit. Bigger header fields are now admitted, but data is truncated to 32 bit.
+        /* if ((OXM_VENDOR(ntohl(src->field))==0xFFFF && OXM_LENGTH(ntohl(src->field))-EXP_ID_LEN > 4) || (OXM_VENDOR(ntohl(src->field))!=0xFFFF && OXM_LENGTH(ntohl(src->field)) > 4)) {
+               OFL_LOG_WARN(LOG_MODULE, "Received STATE_MOD message has invalid header field size (%u).", OXM_LENGTH(ntohl(src->field)));
+               return ofl_error(OFPET_EXPERIMENTER, OFPEC_BAD_HEADER_FIELD_SIZE);
+         } */
 
         dst->table_id = src->table_id;
         dst->extractor_id = src->extractor_id;
@@ -935,7 +936,10 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
                 if (error)
                     return error;
             }
-            
+
+            if (sa->opcode==OPCODE_EWMA && (sa->operand_2<0 || sa->operand_2>EWMA_PARAM_0875))
+                OFL_LOG_WARN(LOG_MODULE, "Received SET DATA VAR (opcode EWMA) action has invalid alpha parameter: 0 <= operand_2 <= 6. Using EWMA_PARAM_0500.");
+
             da->table_id = sa->table_id;
             da->operand_types = ntohs(sa->operand_types);
             da->opcode = sa->opcode;
@@ -1006,11 +1010,10 @@ ofl_exp_beba_act_unpack(struct ofp_action_header const *src, size_t *len, struct
             /* OF spec says: <<Set-Field actions for OXM types OFPXMT_OFB_IN_PORT, OXM_OF_IN_PHY_PORT and OFPXMT_OFB_METADATA are not supported,
             because those are not header fields. The Set-Field action overwrite the header field specified by the OXM type, and perform the
             necessary CRC recalculation based on the header field.>>
-            The same must apply for all the other OS metadata fields!
-            */
-            //TODO Davide: what about METADATA? Should we need a dedicated WRITE CONTEXT TO METADATA? Maybe we can just remove the check below...
+            TODO: Should we apply the same assumption for all the other BEBA metadata fields?
+            For simplicity we commenred the check below to re-use WRITE CONTEXT TO FIELD avoiding a dedicated WRITE CONTEXT TO METADATA */
             if(da->dst_field == OXM_OF_IN_PORT || da->dst_field == OXM_OF_IN_PHY_PORT
-                                    || da->dst_field == OXM_OF_METADATA
+                                    // || da->dst_field == OXM_OF_METADATA
                                     || da->dst_field == OXM_OF_IPV6_EXTHDR
                                     || da->dst_field == OXM_EXP_GLOBAL_STATE
                                     || da->dst_field == OXM_EXP_STATE
@@ -2311,26 +2314,145 @@ void state_table_destroy(struct state_table *table) {
     free(table);
 }
 
+void swap_struct_biflow(struct struct_biflow *a, struct struct_biflow *b){
+    struct struct_biflow c;
+    c = *a;
+    *a = *b;
+    *b = c;
+}
+
+int a_min_b(struct struct_biflow *a, struct struct_biflow *b){
+    int cnt = 0;
+
+    for (cnt = 0; cnt < a->len; cnt++) {
+        if ((a->value)[cnt] != (b->value)[cnt]) {
+            if ((a->value)[cnt] < (b->value)[cnt]) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+
+void selection_sort(struct struct_biflow *a, int field_count){
+    int i = 0, min, j, z;
+    int n = OFPSC_MAX_KEY_LEN;
+
+    for(i=0; i < field_count; i++){
+        min = i;
+        for(j=i+1; j<n; j++){
+            if(a[j].type < a[min].type && a[j].type != 0){
+                min = j;
+            }
+        }
+        swap_struct_biflow(&a[min],&a[i]);
+    }
+
+    i = 0;
+    while (i < field_count){
+        if(a[i].type == 0)
+            return;
+
+        switch (a[i].type) {
+            case OXM_OF_ETH_DST:
+                if (a[i+1].type == OXM_OF_ETH_SRC) {
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+            case OXM_OF_IPV4_SRC:
+                if (a[i+1].type == OXM_OF_IPV4_DST) {
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+            case OXM_OF_TCP_SRC:
+                if (a[i+1].type == OXM_OF_TCP_DST) {
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+            case OXM_OF_UDP_SRC:
+                if (a[i+1].type == OXM_OF_UDP_DST) {
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+            case OXM_OF_IPV6_SRC:
+                if (a[i+1].type == OXM_OF_IPV6_DST) {
+                    if ( a_min_b(&a[i],&a[i+1]) ) {
+                        swap_struct_biflow(&a[i],&a[i+1]);
+                    }
+                    i++;
+                }
+                break;
+        }
+        i++;
+    }
+}
+
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
 int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt) {
     int i;
     uint32_t extracted_key_len = 0;
     struct ofl_match_tlv *f;
+    struct struct_biflow xbiflow[OFPSC_MAX_KEY_LEN] = {0};
+    OFL_LOG_DBG(LOG_MODULE, "biflow value = %d", extractor->biflow);
 
-    for (i = 0; i < extractor->field_count; i++) {
-        uint32_t type = (int) extractor->fields[i];
-        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-            hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
-                if (type == f->header) {
-                    if (OXM_VENDOR(f->header)==0xFFFF){
-                        memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+    // if biflow
+    if(extractor->biflow){
+        for (i = 0; i < extractor->field_count; i++) {
+            uint32_t type = (int) extractor->fields[i];
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
+                    if (type == f->header) {
+                        if (OXM_VENDOR(f->header)==0xFFFF){
+                            xbiflow[i].type = f->header;
+                            xbiflow[i].value = f->value+EXP_ID_LEN;
+                            xbiflow[i].len = (OXM_LENGTH(f->header)-EXP_ID_LEN);
+                        } else {
+                            xbiflow[i].type = f->header;
+                            xbiflow[i].value = f->value;
+                            xbiflow[i].len = (OXM_LENGTH(f->header));
+                        }
+                        break;
                     }
-                    else {
-                        memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+            }
+        }
+
+        selection_sort(&xbiflow, extractor->field_count);
+        extracted_key_len = 0;
+
+        for (i=0; i<extractor->field_count; i++) {
+            memcpy(&buf[extracted_key_len], xbiflow[i].value, xbiflow[i].len);
+            extracted_key_len = extracted_key_len + xbiflow[i].len;
+        }
+
+    } else {
+        for (i = 0; i < extractor->field_count; i++) {
+            uint32_t type = (int) extractor->fields[i];
+            HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
+                    if (type == f->header) {
+                        if (OXM_VENDOR(f->header)==0xFFFF){
+                            memcpy(&buf[extracted_key_len], f->value+EXP_ID_LEN, OXM_LENGTH(f->header)-EXP_ID_LEN);
+                        } else {
+                            memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
+                        }
+                        extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
+                        break;
                     }
-                    extracted_key_len = extracted_key_len + OXM_LENGTH(f->header);//keeps only 8 last bits of oxm_header that contains oxm_length(in which length of oxm_payload)
-                    break;
-                }
+            }
         }
     }
     /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
@@ -2408,6 +2530,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
     uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
     struct state_entry *state_entry;
     uint8_t field_len;
+    uint64_t operand_value64;
 
     switch (operand_type) {
         case OPERAND_TYPE_FLOW_DATA_VAR: {
@@ -2454,6 +2577,16 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                 field_len -= EXP_ID_LEN;
             }
             switch (field_len) {
+                case 8: {
+                    memcpy(&operand_value64, key, 8);
+                    *operand_value = (uint32_t)operand_value64 & 0x0000ffff;
+                    break;
+                }
+                case 6: {
+                    memcpy(&operand_value64, key, 6);
+                    *operand_value = (uint32_t)operand_value64 & 0x0000ffff;
+                    break;
+                }
                 case 4: {
                     memcpy(operand_value, key, 4);
                     break;
@@ -2467,6 +2600,7 @@ bool retrieve_operand(uint32_t *operand_value, uint8_t operand_type, uint8_t ope
                     break;
                 }
             }
+            OFL_LOG_DBG(LOG_MODULE, "operand_value = %d\n", *operand_value);
             break;
         }
         case OPERAND_TYPE_CONSTANT: {
@@ -2627,7 +2761,9 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
 {
     struct key_extractor *dest;
     uint32_t key_len = 0;
-
+	
+    //TODO check if the biflow fields are invertible
+	
     int i;
     for (i = 0; i < ke->field_count; i++) {
         key_len += OXM_LENGTH((int) ke->fields[i]);
@@ -2699,6 +2835,7 @@ ofl_err state_table_set_extractor(struct state_table *table, struct key_extracto
         memcpy(table->default_state_entry.stats->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
     }
     dest->table_id = ke->table_id;
+    dest->biflow = ke->biflow;
     dest->field_count = ke->field_count;
     dest->key_len = key_len;
     memcpy(dest->fields, ke->fields, sizeof(uint32_t) * ke->field_count);
@@ -2864,7 +3001,45 @@ void state_table_set_data_variable(struct state_table *table, struct ofl_exp_act
             break;}
         case OPCODE_EWMA:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_EWMA");
-            //TODO Davide
+            // ewma( [last_ewma] , [EWMA_PARAM_****],  [current_sample] )
+            // output = (1 - alpha)*current_sample + alpha(last_ewma)
+
+            switch (operand_2_value) {
+                case EWMA_PARAM_0125:{
+                    result1 = (uint32_t) (operand_1_value >> 3)     + (operand_3_value >> 3)*7;
+                    break;
+                }    
+                case EWMA_PARAM_0250:{
+                    result1 = (uint32_t) (operand_1_value >> 2)     + (operand_3_value >> 2)*3;
+                    break;
+                }    
+                case EWMA_PARAM_0375:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*3   + (operand_3_value >> 3)*5;
+                    break;
+                }    
+                case EWMA_PARAM_0500:{
+                    result1 = (uint32_t) (operand_1_value >> 1)     + (operand_3_value >> 1);
+                    break;
+                }    
+                case EWMA_PARAM_0625:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*5   + (operand_3_value >> 3)*3;
+                    break;
+                }    
+                case EWMA_PARAM_0750:{
+                    result1 = (uint32_t) (operand_1_value >> 2)*3   + (operand_3_value >> 2);
+                    break;
+                }    
+                case EWMA_PARAM_0875:{
+                    result1 = (uint32_t) (operand_1_value >> 3)*7   + (operand_3_value >> 3);
+                    break;
+                }    
+                default:{
+                    // Default returns a 50/50 average
+                    result1 = (uint32_t) (operand_1_value >> 1)     + (operand_3_value >> 1);
+                    break;
+                }    
+            }
+
             break;}
         case OPCODE_POLY_SUM:{
             OFL_LOG_DBG(LOG_MODULE, "Executing OPCODE_POLY_SUM");

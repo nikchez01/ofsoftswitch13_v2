@@ -81,7 +81,7 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
     {
         /*Field existence is guaranteed by the
         field pre-requisite on matching */
-        fprintf(stderr, "Header %d\n", OXM_FIELD(act->field->header));
+        VLOG_DBG_RL(LOG_MODULE, &rl, "Header %d\n", OXM_FIELD(act->field->header));
         switch(act->field->header){
             case OXM_OF_ETH_DST:{
                 memcpy(pkt->handle_std.proto.eth->eth_dst,
@@ -416,8 +416,20 @@ set_field(struct packet *pkt, struct ofl_action_set_field *act )
                 struct  ofl_match_tlv *f;
                 HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
                     hmap_node, hash_int(OXM_OF_TUNNEL_ID, 0), &(pkt)->handle_std.match.match_fields){
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "TUNNEL = %"PRIu64"\n", *f->value);
                     uint64_t *tunnel_id = (uint64_t*) f->value;
                     *tunnel_id = *((uint64_t*) act->field->value);
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "TUNNEL2 = %"PRIu64"\n", *f->value);
+                }
+                break;
+            }
+            case OXM_OF_METADATA:{
+                    struct  ofl_match_tlv *f;
+                    HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
+                    hmap_node, hash_int(OXM_OF_METADATA,0), &(pkt)->handle_std.match.match_fields){
+                    uint64_t *metadata = (uint64_t*) f->value;
+                    *metadata = *((uint64_t*) act->field->value) & 0xFFFFFFFF;
+                    VLOG_DBG_RL(LOG_MODULE, &rl, "Executing write metadata: %"PRIu64"", *metadata);
                 }
                 break;
             }
