@@ -159,12 +159,10 @@ struct ofl_exp_global_data_stats{
 	uint32_t global_data[OFPSC_MAX_GLOBAL_DATA_VAR_NUM];
 };
 
-
 struct ofl_exp_msg_multipart_request_global_data {
 	struct ofl_exp_beba_msg_multipart_request   header; /* OFPMP_STATE */
 	uint8_t                  table_id;
 };
-
 
 struct ofl_exp_msg_multipart_reply_global_data {
 	struct ofl_exp_beba_msg_multipart_reply   header; /* OFPMP_STATE */
