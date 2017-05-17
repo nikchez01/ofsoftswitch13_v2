@@ -408,9 +408,10 @@ enum ofp_exp_msg_pkttmp_mod_commands {
  *
 ****************************************************************/
 enum ofp_stats_extension_commands {
-    OFPMP_EXP_STATE_STATS,      
+    OFPMP_EXP_STATE_STATS,
     OFPMP_EXP_GLOBAL_STATE_STATS,
-    OFPMP_EXP_STATE_STATS_AND_DELETE
+    OFPMP_EXP_STATE_STATS_AND_DELETE,
+    OFPMP_EXP_GLOBAL_DATA_STATS
 };
 
 struct ofp_exp_state_entry{
@@ -474,5 +475,31 @@ struct ofp_exp_global_state_stats {
     uint32_t global_state;
 };
 OFP_ASSERT(sizeof(struct ofp_exp_global_state_stats) == 16);
+
+/****************************************************************
+ *
+ *   MULTIPART MESSAGE: OFPMP_EXP_GLOBAL_DATA_STATS
+ *
+****************************************************************/
+
+struct ofp_exp_global_data_stats {
+    uint32_t global_data[OFPSC_MAX_GLOBAL_DATA_VAR_NUM];
+};
+OFP_ASSERT(sizeof(struct ofp_exp_global_data_stats) == 32);
+
+/* Body for ofp_multipart_request of type OFPMP_EXP_GLOBAL_DATA_STATS. */
+struct ofp_exp_global_data_stats_request {
+    struct ofp_experimenter_stats_header header;
+    uint8_t pad[7];
+    uint8_t table_id;
+};
+OFP_ASSERT(sizeof(struct ofp_exp_global_data_stats_request) == 16);
+
+/* Body of reply to OFPMP_EXP_GLOBAL_DATA_STATS request. */
+struct ofp_exp_global_data_stats_reply {
+    struct ofp_experimenter_stats_header header;
+    struct ofp_exp_global_data_stats stats;
+};
+OFP_ASSERT(sizeof(struct ofp_exp_global_data_stats_reply) == 40);
 
 #endif /* BEBA_EXT_H */

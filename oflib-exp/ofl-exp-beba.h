@@ -154,6 +154,24 @@ struct ofl_exp_state_stats {
     struct ofl_exp_state_entry      entry;         /* Description of the state entry. */
 };
 
+/****************************************************************************/
+
+struct ofl_exp_global_data_stats{
+	uint32_t global_data[OFPSC_MAX_GLOBAL_DATA_VAR_NUM];
+};
+
+struct ofl_exp_msg_multipart_request_global_data {
+	struct ofl_exp_beba_msg_multipart_request   header; /* OFPMP_STATE */
+	uint8_t                  table_id;
+};
+
+struct ofl_exp_msg_multipart_reply_global_data {
+	struct ofl_exp_beba_msg_multipart_reply   header; /* OFPMP_STATE */
+	struct ofl_exp_global_data_stats *stats;
+};
+
+/****************************************************************************/
+
 struct ofl_exp_msg_multipart_request_state {
     struct ofl_exp_beba_msg_multipart_request   header; /* OFPMP_STATE */
 
@@ -516,6 +534,10 @@ handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_req
 /* Handles a global state stats request. */
 ofl_err
 handle_stats_request_global_state(struct pipeline *pl, const struct sender *sender, struct ofl_exp_msg_multipart_reply_global_state *reply);
+
+/* Handles a global data stats request. */
+ofl_err
+handle_stats_request_global_data(struct pipeline *pl, struct ofl_exp_msg_multipart_request_global_data *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_global_data *reply);
 
 void
 state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_request_state *msg,
