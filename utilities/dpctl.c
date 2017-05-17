@@ -1073,7 +1073,7 @@ static struct command all_commands[] = {
     {"stats-state", 0, 3, stats_state},
     {"stats-state-and-delete", 0, 3, stats_state_and_delete},
     {"stats-global-state", 0, 0, stats_global_state},
-    //TODO add support global data variables
+    //TODO add support for "stats-global-data-var" command
     {"stats-aggr", 0, 2, stats_aggr},
     {"stats-table", 0, 0, stats_table },
     {"stats-port", 0, 1, stats_port },
