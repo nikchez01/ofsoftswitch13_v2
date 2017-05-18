@@ -162,16 +162,15 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
             // Flow state.
             struct state_entry *state_entry;
             state_entry = state_table_lookup(table->state_table, pkt);
+
             oxm_set_info(&pkt->handle_std.info, state, state_entry->state);
+
             // Global state.
-            if (oxm_has_valid(&pkt->handle_std.info, global_state)) {
-                uint32_t flags = pkt->handle_std.info.global_state;
-                flags = (flags & 0x00000000) | (pkt->dp->global_state);
-                oxm_set_info(&pkt->handle_std.info, global_state, flags);
-            }
+            oxm_set_info(&pkt->handle_std.info, global_state, pkt->dp->global_state);
+
         } else {
-            // FIXME: avoid matching on state on non-stateful stages.
-            // hint: don't touch the packet, avoid installing flowmods that match on state.
+            oxm_reset(&pkt->handle_std.info, state);
+            oxm_reset(&pkt->handle_std.info, global_state);
         }
         #endif
 
