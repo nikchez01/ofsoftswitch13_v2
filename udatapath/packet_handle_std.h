@@ -52,10 +52,6 @@ struct packet_handle_std {
 
    struct packet              *pkt;
 
-   // struct ofl_match  pkt_match;  /* Match fields extracted from the packet
-   //      			    are also stored in a match structure
-   //      			    for convenience */
-
    struct protocols_std proto;	   /* Match fields extracted from the packet */
 
    struct oxm_packet_info info;
@@ -79,12 +75,8 @@ packet_handle_std_validate(struct packet_handle_std *handle);
 static inline
 void packet_handle_std_init(struct packet_handle_std *handle, struct packet *pkt)
 {
-	// FLAT
-	// handle->proto = xmalloc(sizeof(struct protocols_std));
-
 	handle->pkt = pkt;
 
-	// hmap_init(&handle->pkt_match.match_fields);
 	oxm_reset_all(&handle->info);
 
 	handle->valid = false;
@@ -97,12 +89,9 @@ struct packet_handle_std *
 packet_handle_std_create(struct packet *pkt)
 {
 	struct packet_handle_std *handle = xmalloc(sizeof(struct packet_handle_std));
-	// FLAT
-	// handle->proto = xmalloc(sizeof(struct protocols_std));
 
 	handle->pkt = pkt;
 
-	// hmap_init(&handle->pkt_match.match_fields);
 	oxm_reset_all(&handle->info);
 
 	handle->valid = false;
@@ -118,13 +107,8 @@ packet_handle_std_clone(struct packet *pkt, struct packet_handle_std *handle UNU
 {
     struct packet_handle_std *clone = xmalloc(sizeof(struct packet_handle_std));
 
-    // FLAT
-    // clone->proto = xmalloc(sizeof(struct protocols_std));
-    //
-
     clone->pkt = pkt;
 
-    // hmap_init(&clone->pkt_match.match_fields);
     oxm_reset_all(&clone->info);
 
     clone->valid = false;
@@ -135,30 +119,9 @@ packet_handle_std_clone(struct packet *pkt, struct packet_handle_std *handle UNU
 
 static inline
 void
-packet_handle_std_destroy(struct packet_handle_std *handle) {
-
+packet_handle_std_destroy(struct packet_handle_std *handle)
+{
     (void)handle;
-
-    // struct ofl_match_tlv * iter, *next;
-
-    // if (unlikely(handle->pkt_match.dirty))
-    // {
-    // HMAP_FOR_EACH_SAFE(iter, next, struct ofl_match_tlv, hmap_node, &handle->pkt_match.match_fields){
-    //     if (iter->ownership) {
-    //     	free(iter->value);
-    //     	free(iter);
-    //     }
-    // }
-    //     handle->pkt_match.dirty = false;
-    // }
-
-    // FLAT
-    // free(handle->proto);
-
-    // hmap_destroy(&handle->pkt_match.match_fields);
-
-    // FLAT
-    // free(handle);
 }
 
 

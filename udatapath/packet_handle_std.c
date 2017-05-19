@@ -457,11 +457,8 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
 
 void
-packet_handle_std_validate(struct packet_handle_std *handle) {
-
-    // struct ofl_match_tlv * iter, *next, *f;
-    //
-
+packet_handle_std_validate(struct packet_handle_std *handle)
+{
     uint64_t metadata     = 0;
     uint64_t tunnel_id    = 0;
     uint32_t state        = 0;
