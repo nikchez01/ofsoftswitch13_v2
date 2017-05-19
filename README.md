@@ -32,8 +32,9 @@ For more information on how to use these components please refer to the [origina
 
 Run the following commands in the `beba-switch` directory to build and install everything:
 
-    $ ./boot.sh
-    $ ./configure
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DCMAKE_BUILD_TYPE=Release
     $ make
     $ sudo make install
 
