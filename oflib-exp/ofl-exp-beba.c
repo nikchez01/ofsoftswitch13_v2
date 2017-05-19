@@ -26,8 +26,7 @@ OFL_LOG_INIT(LOG_MODULE)
 /* functions used  by ofp_exp_msg_pkttmp_mod */
 static ofl_err
 ofl_structs_add_pkttmp_unpack(struct ofp_exp_add_pkttmp const *src, size_t *len, struct ofl_exp_add_pkttmp *dst) {
-    //int i;
-    //uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
+
     uint8_t *data = NULL;
 
     if( *len >= sizeof(struct ofp_exp_add_pkttmp) )
@@ -53,8 +52,6 @@ ofl_structs_add_pkttmp_unpack(struct ofp_exp_add_pkttmp const *src, size_t *len,
 
 static ofl_err
 ofl_structs_del_pkttmp_unpack(struct ofp_exp_del_pkttmp const *src, size_t *len, struct ofl_exp_del_pkttmp *dst) {
-    //int i;
-    //uint8_t key[OFPSC_MAX_KEY_LEN] = {0};
 
     if( *len == sizeof(struct ofp_exp_del_pkttmp) )
     {
@@ -917,7 +914,7 @@ ofl_exp_beba_stats_reply_pack(struct ofl_msg_multipart_reply_experimenter const 
             data = (uint8_t*) resp->body;
             ext_header = (struct ofp_experimenter_stats_header*) data;
             ext_header->experimenter = htonl(BEBA_VENDOR_ID);
-            ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS);
+                ext_header->exp_type = htonl(OFPMP_EXP_STATE_STATS);
             ext_header->exp_type = htonl(e->type);
 
             data += sizeof(struct ofp_experimenter_stats_header);
@@ -1797,26 +1794,27 @@ void state_table_destroy(struct state_table *table)
     hmap_destroy(&table->state_entries);
     free(table);
 }
+
+
 /* having the key extractor field goes to look for these key inside the packet and map to corresponding value and copy the value into buf. */
-int __extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
+inline bool
+__extract_key(uint8_t *buf, struct key_extractor *extractor, struct packet *pkt)
 {
-    int i;
-    uint32_t extracted_key_len=0;
-    struct ofl_match_tlv *f;
+    int i, extracted_key_len = 0;
 
     for (i=0; i<extractor->field_count; i++) {
-        uint32_t type = (int)extractor->fields[i];
-        HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-            hmap_node, hash_int(type, 0), &pkt->handle_std.match.match_fields){
-                if (type == f->header) {
-                    memcpy(&buf[extracted_key_len], f->value, OXM_LENGTH(f->header));
-                    extracted_key_len += OXM_LENGTH(f->header);
-                    break;
+        size_t length;
+        void *field = oxm_match_lookup_info(&pkt->handle_std.info, extractor->fields[i], &length);
+        if (field) {
+            memcpy(buf + extracted_key_len, field, length);
+            extracted_key_len += length;
                 }
+	else {
+		return false;
         }
     }
-    /* check if the full key has been extracted: if key is extracted partially or not at all, we cannot access the state table */
-    return extracted_key_len == extractor->key_len;
+
+    return true;
 }
 
 static bool
@@ -1871,8 +1869,8 @@ state_table_flush(struct state_table *table, uint64_t now_us)
 /*having the read_key, look for the state value inside the state_table */
 struct state_entry * state_table_lookup(struct state_table* table, struct packet *pkt)
 {
-    struct state_entry * e = NULL;
     uint8_t key[MAX_STATE_KEY_LEN] = {0};
+    struct state_entry * e = NULL;
     uint64_t now_us;
 
     if(!__extract_key(key, &table->lookup_key_extractor, pkt))
@@ -1883,7 +1881,9 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
 
     HMAP_FOR_EACH_WITH_HASH(e, struct state_entry,
         hmap_node, hash_bytes(key, MAX_STATE_KEY_LEN, 0), &table->state_entries){
+
             if (!memcmp(key, e->key, MAX_STATE_KEY_LEN)){
+
                 OFL_LOG_DBG(LOG_MODULE, "state entry FOUND: %u",e->state);
 
                 now_us = 1000000 * pkt->ts.tv_sec + pkt->ts.tv_usec;
@@ -1895,21 +1895,15 @@ struct state_entry * state_table_lookup(struct state_table* table, struct packet
 
                 // cache the last state entry to avoid re-extracting it if two scopes are the same
                 table->last_lookup_state_entry = e;
-
                 return e;
             }
     }
 
     table->last_lookup_state_entry = NULL;
-
     OFL_LOG_DBG(LOG_MODULE, "state entry NOT FOUND, returning DEFAULT");
     return &table->default_state_entry;
 }
 
-void state_table_write_state_header(struct state_entry *entry, struct ofl_match_tlv *f) {
-    uint32_t *state = (uint32_t *) (f->value + EXP_ID_LEN);
-    *state = entry->state;
-}
 
 ofl_err state_table_del_state(struct state_table *table, uint8_t *key, uint32_t len) {
     struct state_entry *e;
@@ -2216,7 +2210,7 @@ ofl_err state_table_inc_state(struct state_table *table, struct packet *pkt){
     if (!entry_to_update_is_cached) {
         if (!__extract_key(key, &table->update_key_extractor, pkt)) {
             OFL_LOG_DBG(LOG_MODULE, "update key fields not found in the packet's header");
-            return res;
+            return 0;
         }
 
         HMAP_FOR_EACH_WITH_HASH(e, struct state_entry, hmap_node,

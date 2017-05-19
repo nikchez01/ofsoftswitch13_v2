@@ -146,31 +146,34 @@ match_mask128(uint8_t *a, uint8_t *am, uint8_t *b) {
 
 
 /* Returns true if the fields in *packet matches the flow entry in *flow_match */
+
 bool
-packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_exp *exp){
+packet_match(struct ofl_match *flow_match, struct oxm_packet_info *info, struct ofl_exp *exp) {
 
     struct ofl_match_tlv *f;
-    struct ofl_match_tlv *packet_f;
     bool has_mask;
     int field_len;
     int packet_header;
     uint8_t *flow_val, *flow_mask= NULL;
     uint8_t *packet_val;
 
-    if (flow_match->header.length == 0)
+    if (unlikely(flow_match->header.length == 0))
         return true;
 
     /* Loop over the flow entry's match fields */
+
     HMAP_FOR_EACH(f, struct ofl_match_tlv, hmap_node, &flow_match->match_fields)
     {
         /* Check presence of match field in packet */
+	size_t len;
 
         has_mask = OXM_HASMASK(f->header);
         packet_header = f->header;
+
         switch (OXM_VENDOR(f->header))
         {
-            case(OFPXMC_OPENFLOW_BASIC):
-                field_len =  OXM_LENGTH(f->header);
+            case OFPXMC_OPENFLOW_BASIC:
+                field_len = OXM_LENGTH(f->header);
                 flow_val = f->value;
                 if (has_mask) {
                     /* Clear the has_mask bit and divide the field_len by two in the packet field header */
@@ -181,7 +184,7 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
                 }
                 break;
 
-            case(OFPXMC_EXPERIMENTER):
+            case OFPXMC_EXPERIMENTER:
                 if (exp == NULL || exp->field == NULL || exp->field->match == NULL) {
                     VLOG_WARN(LOG_MODULE,"Received match is experimental, but no callback was given.");
                     ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_TYPE);
@@ -194,32 +197,16 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
         }
 
         /* Lookup the packet header */
-        packet_f = oxm_match_lookup(packet_header, packet);
-        if (!packet_f) {
-        	if (f->header==OXM_OF_VLAN_VID &&
-        			*((uint16_t *) f->value)==OFPVID_NONE) {
-        		/* There is no VLAN tag, as required */
-        		continue;
-        	}
-        	return false;
-        }
 
-        /* Compare the flow and packet field values, considering the mask, if any */
-        switch (OXM_VENDOR(f->header))
-        {
-            case(OFPXMC_OPENFLOW_BASIC):
-                packet_val = packet_f->value;
-                break;
-            case(OFPXMC_EXPERIMENTER):
-                if (exp == NULL || exp->field == NULL || exp->field->compare == NULL) {
-                    VLOG_WARN(LOG_MODULE,"Received match is experimental, but no callback was given.");
-                    ofl_error(OFPET_BAD_MATCH, OFPBMC_BAD_TYPE);
-                }
-                exp->field->compare(f, packet_f, &packet_val);
-                break;
-            default:
-                break;
-        }
+        packet_val = oxm_match_lookup_info(info, packet_header, &len);
+        if (!packet_val) {
+		if (f->header==OXM_OF_VLAN_VID && *((uint16_t *) f->value)==OFPVID_NONE) {
+			/* There is no VLAN tag, as required */
+			continue;
+		}
+		return false;
+	}
+
 
         switch (field_len) {
             case 1:
@@ -338,7 +325,6 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
     /* If we get here, all match fields in the flow entry matched the packet */
     return true;
 }
-
 
 static inline bool
 strict_mask8(uint8_t *a, uint8_t *b, uint8_t *am, uint8_t *bm) {

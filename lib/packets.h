@@ -416,9 +416,9 @@ BUILD_ASSERT_DECL(MPLS_HEADER_LEN == sizeof(struct mpls_header));
 
 struct protocols_std {
    struct eth_header      * eth;
-   struct snap_header     * eth_snap; /* points to SNAP header if eth is 802.3 */
+   struct snap_header     * eth_snap;	/* points to SNAP header if eth is 802.3 */
    struct vlan_header     * vlan;
-   struct vlan_header     * vlan_last; /* points to the last VLAN header */
+   struct vlan_header     * vlan_last;	/* points to the last VLAN header */
    struct mpls_header     * mpls;
    struct pbb_header      * pbb;
    struct ip_header       * ipv4;
@@ -432,19 +432,8 @@ struct protocols_std {
 
 static inline void
 protocol_reset(struct protocols_std *proto) {
-    proto->eth       = NULL;
-    proto->eth_snap  = NULL;
-    proto->vlan      = NULL;
-    proto->vlan_last = NULL;
-    proto->mpls      = NULL;
-    proto->ipv4      = NULL;
-    proto->ipv6      = NULL;
-    proto->arp       = NULL;
-    proto->tcp       = NULL;
-    proto->udp       = NULL;
-    proto->sctp      = NULL;
-    proto->icmp      = NULL;
-    proto->pbb       = NULL;
+
+    memset(proto, 0, sizeof(struct protocols_std));
 }
 
 
