@@ -123,55 +123,7 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
         s->rxbuf = ofpbuf_new(1564);
     }
     rx = s->rxbuf;
-    	
-#if 0
-    ofpbuf_prealloc_tailroom(rx, want_bytes);
 
-    do 
-    {
-    	retval = read(s->fd, ofpbuf_tail(rx), want_bytes);
-	if (retval < 0) {
-	    if (errno != EAGAIN)
-		    VLOG_ERR_RL(LOG_MODULE, &rl, "read error (size = %zu, want_bytes=%zu, retval=%d -> %d:%s)", rx->size, want_bytes, retval, errno, strerror(errno));
-            return errno;
-	}
-
-	if (retval == 0) {
-	    if (rx->size)
-		VLOG_ERR_RL(LOG_MODULE, &rl, "connection dropped (size = %zu, want_bytes=%zu)", rx->size, want_bytes);
-	    return rx->size == 0 ? EOF : EPROTO;
-	}
-
-        rx->size += retval;
-	want_bytes -= retval;
-
-	if (rx->size == sizeof(struct ofp_header)) {
-
-        	struct ofp_header *oh = rx->data;
-        	size_t length = ntohs(oh->length);
-
-		if (length < sizeof(struct ofp_header)) {
-		    struct ds msg = DS_EMPTY_INITIALIZER;
-		    ds_put_format(&msg, "%s: received too-short ofp_header (%zu bytes)\n", vconn->name, length);
-		    ds_put_hex_dump(&msg, rx->data, rx->size, 0, true);
-		    VLOG_ERR_RL(LOG_MODULE, &rl, "%s", ds_cstr(&msg));
-		    ds_destroy(&msg);
-		    ofpbuf_delete(rx);
-    		    s->rxbuf = NULL;
-            	    return EPROTO;
-		}
-
-		want_bytes = length - sizeof(struct ofp_header);
-		if (want_bytes > 0)
-    			ofpbuf_prealloc_tailroom(rx, want_bytes);
-	}	
-    } 
-    while (want_bytes > 0);
-    
-    *bufferp = rx;
-    s->rxbuf = NULL;
-    return 0;
-#else
 again:
 
     if (sizeof(struct ofp_header) > rx->size) {
@@ -221,7 +173,6 @@ again:
     } else {
         return errno;
     }
-#endif
 
 }
 
