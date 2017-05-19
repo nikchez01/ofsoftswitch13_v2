@@ -55,7 +55,6 @@
 #include "command-line.h"
 #include "daemon.h"
 #include "datapath.h"
-#include "fault.h"
 #include "openflow/openflow.h"
 #include "poll-loop.h"
 #include "queue.h"
@@ -117,7 +116,6 @@ udatapath_cmd(int argc, char *argv[])
     int i, n;
 
     set_program_name(argv[0]);
-    register_fault_handlers();
     time_init();
     vlog_init();
 

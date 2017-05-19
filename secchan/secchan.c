@@ -47,7 +47,6 @@
 #include "dirs.h"
 #include "discovery.h"
 #include "failover.h"
-#include "fault.h"
 #include "in-band.h"
 #include "leak-checker.h"
 #include "list.h"
@@ -121,7 +120,6 @@ main(int argc, char *argv[])
     int retval;
 
     set_program_name(argv[0]);
-    register_fault_handlers();
     time_init();
     vlog_init();
     parse_options(argc, argv, &s);
