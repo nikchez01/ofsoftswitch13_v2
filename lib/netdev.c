@@ -1019,6 +1019,9 @@ netdev_link_state(struct netdev *netdev)
 static int
 netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
 {
+    char local_buffer[1514];
+    size_t sofar = 0;
+
 #ifdef HAVE_PACKET_AUXDATA
     /* Code from libpcap to reconstruct VLAN header */
     struct iovec    iov;
@@ -1035,8 +1038,10 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
 #endif
     ssize_t n_bytes;
 
+#if 0
     assert(buffer->size == 0);
     assert(ofpbuf_tailroom(buffer) >= ETH_TOTAL_MIN);
+#endif
 
 #ifdef HAVE_PACKET_AUXDATA
     /* Code from libpcap to reconstruct VLAN header */
@@ -1052,7 +1057,7 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
     msg.msg_flags	= 0;
 
     iov.iov_len		= max_mtu;
-    iov.iov_base	= buffer->data;
+    iov.iov_base	= local_buffer;
 
 #else
     /* prepare to call recvfrom */
@@ -1061,10 +1066,14 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
 #endif
 
     /* cannot execute recvfrom over a tap device */
-    if (!strncmp(netdev->name, "tap", 3)) {
+    if (netdev->name[0] == 't' && !strncmp(netdev->name, "tap", 3)) {
         do {
-            n_bytes = read(netdev->tap_fd, ofpbuf_tail(buffer),
-                           (ssize_t)ofpbuf_tailroom(buffer));
+            n_bytes = read(netdev->tap_fd, local_buffer + sofar,
+                           sizeof(local_buffer)-sofar);
+
+            if (n_bytes > 0)
+		sofar += n_bytes;
+
         } while (n_bytes < 0 && errno == EINTR);
     }
     else {
@@ -1073,9 +1082,13 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
             /* Code from libpcap to reconstruct VLAN header */
             n_bytes = recvmsg(netdev->tap_fd, &msg, 0);
 #else
-            n_bytes = recvfrom(netdev->tap_fd, ofpbuf_tail(buffer),
-                               (ssize_t)ofpbuf_tailroom(buffer), 0,
+            n_bytes = recvfrom(netdev->tap_fd, local_buffer + sofar,
+                               sizeof(local_buffer)-sofar, 0,
                                (struct sockaddr *)&sll, &sll_len);
+
+            if (n_bytes >= 0)
+		sofar += n_bytes;
+
 #endif /* ifdef HAVE_PACKET_AUXDATA  */
         } while (n_bytes < 0 && errno == EINTR);
     }
@@ -1086,6 +1099,13 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
         }
         return errno;
     } else {
+
+#if BEBA_USE_LIBPCAP_ZEROCOPY
+	if (!buffer->base)
+		ofpbuf_reinit(buffer, VLAN_ETH_HEADER_LEN + 1500 + 128 + 2);
+#endif
+
+	memcpy(buffer->data, local_buffer, sofar);
 
 #ifdef HAVE_PACKET_AUXDATA
             /* Code from libpcap to reconstruct VLAN header */
@@ -1174,11 +1194,6 @@ netdev_recv(struct netdev *netdev, struct ofpbuf *buffer, struct timeval *tv, si
 		}
 		return EAGAIN;
 	}
-#endif
-
-#if BEBA_USE_LIBPCAP_ZEROCOPY
-	if (!buffer->base)
-		ofpbuf_reinit(buffer, VLAN_ETH_HEADER_LEN + 1500 + 128 + 2);
 #endif
 
 	gettimeofday(tv, NULL);

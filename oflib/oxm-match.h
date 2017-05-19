@@ -306,6 +306,160 @@ struct oxm_field {
     bool maskable;                    /* Writable with OXAST_REG_{MOVE,LOAD}? */
 };
 
+
+#ifndef offsetof
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
+
+#define oxm_set_info(info, FIELD, VALUE) do {	\
+	(info)->FIELD = (VALUE);					\
+	(info)->valid |= HAS_VALID_ ## FIELD;		\
+} while (0)
+
+
+#define oxm_has_valid(info, FIELD)		((info)->valid & (HAS_VALID_ ## FIELD))
+#define oxm_set_valid(info, FIELD)		((info)->valid |= (HAS_VALID_ ## FIELD))
+#define oxm_reset(info, FIELD)			((info)->valid &= ~(HAS_VALID_ ## FIELD))
+
+#define oxm_reset_all(info) ((info)->valid = 0)
+
+
+#define oxm_lookup_info(info, LEN, FIELD)	(oxm_has_valid(info, FIELD) ? ({ *LEN = sizeof((info)->FIELD); &(info->FIELD); }) : ({ *LEN = 0; NULL; }))
+
+
+struct oxm_packet_info {
+
+#define	HAS_VALID_metadata	     (1ULL << 0)
+#define	HAS_VALID_tunnel_id	     (1ULL << 1)
+#define	HAS_VALID_state		     (1ULL << 2)
+#define	HAS_VALID_global_state	     (1ULL << 3)
+#define	HAS_VALID_in_port	     (1ULL << 4)
+#define	HAS_VALID_pbb_isid	     (1ULL << 5)
+#define	HAS_VALID_mpls_label	     (1ULL << 6)
+#define	HAS_VALID_mpls_tc	     (1ULL << 7)
+#define	HAS_VALID_mpls_bos	     (1ULL << 8)
+#define	HAS_VALID_eth_type	     (1ULL << 9)
+#define	HAS_VALID_eth_src	     (1ULL << 10)
+#define	HAS_VALID_eth_dst	     (1ULL << 11)
+#define	HAS_VALID_vlan_id	     (1ULL << 12)
+#define	HAS_VALID_vlan_pcp	     (1ULL << 13)
+#define	HAS_VALID_arp_ar_sha	     (1ULL << 14)
+#define	HAS_VALID_arp_ar_tha	     (1ULL << 15)
+#define	HAS_VALID_arp_ar_spa	     (1ULL << 16)
+#define	HAS_VALID_arp_ar_tpa	     (1ULL << 17)
+#define	HAS_VALID_arp_ar_op	     (1ULL << 18)
+#define	HAS_VALID_ip_src	     (1ULL << 19)
+#define	HAS_VALID_ip_dst	     (1ULL << 20)
+#define	HAS_VALID_ip_proto	     (1ULL << 21)
+#define	HAS_VALID_ip_ecn	     (1ULL << 22)
+#define	HAS_VALID_ip_dscp	     (1ULL << 23)
+#define	HAS_VALID_ipv6_src	     (1ULL << 24)
+#define	HAS_VALID_ipv6_dst	     (1ULL << 25)
+#define	HAS_VALID_ipv6_fl	     (1ULL << 26)
+#define	HAS_VALID_ipv6_next_hd	     (1ULL << 27)
+#define	HAS_VALID_ipv6_nd_target     (1ULL << 28)
+#define	HAS_VALID_ipv6_nd_sll	     (1ULL << 29)
+#define	HAS_VALID_ipv6_nd_tll	     (1ULL << 30)
+#define	HAS_VALID_tcp_src	     (1ULL << 31)
+#define	HAS_VALID_tcp_dst	     (1ULL << 32)
+#define	HAS_VALID_tcp_flags	     (1ULL << 33)
+#define	HAS_VALID_udp_src	     (1ULL << 34)
+#define	HAS_VALID_udp_dst	     (1ULL << 35)
+#define	HAS_VALID_sctp_src	     (1ULL << 36)
+#define	HAS_VALID_sctp_dst	     (1ULL << 37)
+#define	HAS_VALID_icmp_type	     (1ULL << 38)
+#define	HAS_VALID_icmp_code	     (1ULL << 39)
+#define	HAS_VALID_icmp6_type	     (1ULL << 40)
+#define	HAS_VALID_icmp6_code	     (1ULL << 41)
+
+
+	unsigned long long valid;
+
+	uint64_t	metadata;
+	uint64_t	tunnel_id;
+	uint32_t	state;
+	uint32_t	global_state;
+	uint32_t	in_port;
+
+	uint16_t	eth_type;
+	uint8_t		eth_src[ETH_ADDR_LEN];
+	uint8_t		eth_dst[ETH_ADDR_LEN];
+
+	union
+	{
+		struct
+		{
+		uint32_t	ip_src;
+		uint32_t	ip_dst;
+		uint8_t		ip_proto;
+		uint8_t		ip_ecn;
+		uint8_t		ip_dscp;
+		};
+
+		struct
+		{
+		uint32_t	ipv6_fl;
+		uint8_t		ipv6_src[IPv6_ADDR_LEN];
+		uint8_t		ipv6_dst[IPv6_ADDR_LEN];
+		uint8_t		ipv6_nd_target[IPv6_ADDR_LEN];
+		uint8_t		ipv6_nd_sll[ETH_ADDR_LEN];
+		uint8_t		ipv6_nd_tll[ETH_ADDR_LEN];
+		uint8_t		ipv6_next_hd;
+		};
+	};
+
+
+	union
+	{
+		struct
+		{
+		uint16_t	tcp_src;
+		uint16_t	tcp_dst;
+		uint16_t	tcp_flags;
+		};
+
+		struct
+		{
+		uint16_t	udp_src;
+		uint16_t	udp_dst;
+		};
+
+		struct
+		{
+		uint8_t		icmp_type;
+		uint8_t		icmp_code;
+		};
+
+		struct
+		{
+		uint8_t		icmp6_type;
+		uint8_t		icmp6_code;
+		};
+
+		struct
+		{
+		uint16_t	sctp_src;
+		uint16_t	sctp_dst;
+		};
+	};
+
+	uint32_t	pbb_isid;
+
+	uint32_t	mpls_label;
+	uint32_t	mpls_tc;
+	uint32_t	mpls_bos;
+
+	uint16_t	vlan_id;
+	uint8_t		vlan_pcp;
+
+	uint64_t	arp_ar_sha;
+	uint64_t	arp_ar_tha;
+	uint32_t	arp_ar_spa;
+	uint32_t	arp_ar_tpa;
+	uint16_t	arp_ar_op;
+};
+
 /* All the known fields. */
 extern struct oxm_field all_fields[NUM_OXM_FIELDS];
 
@@ -350,5 +504,7 @@ int
 oxm_field_bits(uint32_t header);
 
 
+void *
+oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *length);
 
 #endif /* nx-match.h */

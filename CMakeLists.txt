@@ -216,6 +216,7 @@ set(openflow_SOURCES
 	 lib/fatal-signal.c 
 	 lib/flow.c 
 	 lib/hash.c 
+	 lib/xxhash.c 
 	 lib/hmap.c 
 	 lib/ipv6_util.c 
 	 lib/leak-checker.c 
