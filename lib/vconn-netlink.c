@@ -1,6 +1,6 @@
 /* Copyright (c) 2008, 2009 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -54,7 +54,7 @@
 #include "vconn-provider.h"
 
 #include "vlog.h"
-#define THIS_MODULE VLM_VCONN_NETLINK
+#define LOG_MODULE VLM_VCONN_NETLINK
 
 struct netlink_vconn
 {
@@ -64,10 +64,10 @@ struct netlink_vconn
 };
 
 static struct netlink_vconn *
-netlink_vconn_cast(struct vconn *vconn) 
+netlink_vconn_cast(struct vconn *vconn)
 {
     vconn_assert_class(vconn, &netlink_vconn_class);
-    return CONTAINER_OF(vconn, struct netlink_vconn, vconn); 
+    return CONTAINER_OF(vconn, struct netlink_vconn, vconn);
 }
 
 static int
@@ -98,7 +98,7 @@ netlink_open(const char *name, char *suffix, struct vconn **vconnp)
 }
 
 static void
-netlink_close(struct vconn *vconn) 
+netlink_close(struct vconn *vconn)
 {
     struct netlink_vconn *netlink = netlink_vconn_cast(vconn);
     dpif_close(&netlink->dp);
@@ -113,7 +113,7 @@ netlink_recv(struct vconn *vconn, struct ofpbuf **bufferp)
 }
 
 static int
-netlink_send(struct vconn *vconn, struct ofpbuf *buffer) 
+netlink_send(struct vconn *vconn, struct ofpbuf *buffer)
 {
     struct netlink_vconn *netlink = netlink_vconn_cast(vconn);
     int retval = dpif_send_openflow(&netlink->dp, netlink->dp_idx, buffer);
@@ -124,7 +124,7 @@ netlink_send(struct vconn *vconn, struct ofpbuf *buffer)
 }
 
 static void
-netlink_wait(struct vconn *vconn, enum vconn_wait_type wait) 
+netlink_wait(struct vconn *vconn, enum vconn_wait_type wait)
 {
     struct netlink_vconn *netlink = netlink_vconn_cast(vconn);
     short int events = 0;

@@ -1,6 +1,6 @@
 /* Copyright (c) 2008, 2009 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -60,7 +60,7 @@
 #include "vconn.h"
 
 #include "vlog.h"
-#define THIS_MODULE VLM_vconn_ssl
+#define LOG_MODULE VLM_vconn_ssl
 
 /* Active SSL. */
 
@@ -208,19 +208,19 @@ new_ssl_vconn(const char *name, int fd, enum session_type type,
 
     /* Check for all the needful configuration. */
     if (!has_private_key) {
-        VLOG_ERR("Private key must be configured to use SSL");
+        VLOG_ERR(LOG_MODULE, "Private key must be configured to use SSL");
         goto error;
     }
     if (!has_certificate) {
-        VLOG_ERR("Certificate must be configured to use SSL");
+        VLOG_ERR(LOG_MODULE, "Certificate must be configured to use SSL");
         goto error;
     }
     if (!has_ca_cert && !bootstrap_ca_cert) {
-        VLOG_ERR("CA certificate must be configured to use SSL");
+        VLOG_ERR(LOG_MODULE, "CA certificate must be configured to use SSL");
         goto error;
     }
     if (!SSL_CTX_check_private_key(ctx)) {
-        VLOG_ERR("Private key does not match certificate public key: %s",
+        VLOG_ERR(LOG_MODULE, "Private key does not match certificate public key: %s",
                  ERR_error_string(ERR_get_error(), NULL));
         goto error;
     }
@@ -228,7 +228,7 @@ new_ssl_vconn(const char *name, int fd, enum session_type type,
     /* Disable Nagle. */
     retval = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof on);
     if (retval) {
-        VLOG_ERR("%s: setsockopt(TCP_NODELAY): %s", name, strerror(errno));
+        VLOG_ERR(LOG_MODULE, "%s: setsockopt(TCP_NODELAY): %s", name, strerror(errno));
         close(fd);
         return errno;
     }
@@ -236,12 +236,12 @@ new_ssl_vconn(const char *name, int fd, enum session_type type,
     /* Create and configure OpenSSL stream. */
     ssl = SSL_new(ctx);
     if (ssl == NULL) {
-        VLOG_ERR("SSL_new: %s", ERR_error_string(ERR_get_error(), NULL));
+        VLOG_ERR(LOG_MODULE, "SSL_new: %s", ERR_error_string(ERR_get_error(), NULL));
         close(fd);
         return ENOPROTOOPT;
     }
     if (SSL_set_fd(ssl, fd) == 0) {
-        VLOG_ERR("SSL_set_fd: %s", ERR_error_string(ERR_get_error(), NULL));
+        VLOG_ERR(LOG_MODULE, "SSL_set_fd: %s", ERR_error_string(ERR_get_error(), NULL));
         goto error;
     }
     if (bootstrap_ca_cert && type == CLIENT) {
@@ -313,7 +313,7 @@ ssl_open(const char *name, char *suffix, struct vconn **vconnp)
     /* Create socket. */
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        VLOG_ERR("%s: socket: %s", name, strerror(errno));
+        VLOG_ERR(LOG_MODULE, "%s: socket: %s", name, strerror(errno));
         return errno;
     }
     retval = set_nonblocking(fd);
@@ -330,7 +330,7 @@ ssl_open(const char *name, char *suffix, struct vconn **vconnp)
                                  &sin, vconnp);
         } else {
             int error = errno;
-            VLOG_ERR("%s: connect: %s", name, strerror(error));
+            VLOG_ERR(LOG_MODULE, "%s: connect: %s", name, strerror(error));
             close(fd);
             return error;
         }
@@ -352,7 +352,7 @@ do_ca_cert_bootstrap(struct vconn *vconn)
 
     chain = SSL_get_peer_cert_chain(sslv->ssl);
     if (!chain || !sk_X509_num(chain)) {
-        VLOG_ERR("could not bootstrap CA cert: no certificate presented by "
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: no certificate presented by "
                  "peer");
         return EPROTO;
     }
@@ -362,11 +362,11 @@ do_ca_cert_bootstrap(struct vconn *vconn)
      * certificate and we should not attempt to use it as one. */
     error = X509_check_issued(ca_cert, ca_cert);
     if (error) {
-        VLOG_ERR("could not bootstrap CA cert: obtained certificate is "
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: obtained certificate is "
                  "not self-signed (%s)",
                  X509_verify_cert_error_string(error));
         if (sk_X509_num(chain) < 2) {
-            VLOG_ERR("only one certificate was received, so probably the peer "
+            VLOG_ERR(LOG_MODULE, "only one certificate was received, so probably the peer "
                      "is not configured to send its CA certificate");
         }
         return EPROTO;
@@ -374,7 +374,7 @@ do_ca_cert_bootstrap(struct vconn *vconn)
 
     fd = open(ca_cert_file, O_CREAT | O_EXCL | O_WRONLY, 0444);
     if (fd < 0) {
-        VLOG_ERR("could not bootstrap CA cert: creating %s failed: %s",
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: creating %s failed: %s",
                  ca_cert_file, strerror(errno));
         return errno;
     }
@@ -382,14 +382,14 @@ do_ca_cert_bootstrap(struct vconn *vconn)
     file = fdopen(fd, "w");
     if (!file) {
         int error = errno;
-        VLOG_ERR("could not bootstrap CA cert: fdopen failed: %s",
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: fdopen failed: %s",
                  strerror(error));
         unlink(ca_cert_file);
         return error;
     }
 
     if (!PEM_write_X509(file, ca_cert)) {
-        VLOG_ERR("could not bootstrap CA cert: PEM_write_X509 to %s failed: "
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: PEM_write_X509 to %s failed: "
                  "%s", ca_cert_file, ERR_error_string(ERR_get_error(), NULL));
         fclose(file);
         unlink(ca_cert_file);
@@ -398,13 +398,13 @@ do_ca_cert_bootstrap(struct vconn *vconn)
 
     if (fclose(file)) {
         int error = errno;
-        VLOG_ERR("could not bootstrap CA cert: writing %s failed: %s",
+        VLOG_ERR(LOG_MODULE, "could not bootstrap CA cert: writing %s failed: %s",
                  ca_cert_file, strerror(error));
         unlink(ca_cert_file);
         return error;
     }
 
-    VLOG_INFO("successfully bootstrapped CA cert to %s", ca_cert_file);
+    VLOG_INFO(LOG_MODULE, "successfully bootstrapped CA cert to %s", ca_cert_file);
     log_ca_cert(ca_cert_file, ca_cert);
     bootstrap_ca_cert = false;
     has_ca_cert = true;
@@ -419,11 +419,11 @@ do_ca_cert_bootstrap(struct vconn *vconn)
         out_of_memory();
     }
     if (SSL_CTX_load_verify_locations(ctx, ca_cert_file, NULL) != 1) {
-        VLOG_ERR("SSL_CTX_load_verify_locations: %s",
+        VLOG_ERR(LOG_MODULE, "SSL_CTX_load_verify_locations: %s",
                  ERR_error_string(ERR_get_error(), NULL));
         return EPROTO;
     }
-    VLOG_INFO("killing successful connection to retry using CA cert");
+    VLOG_INFO(LOG_MODULE, "killing successful connection to retry using CA cert");
     return EPROTO;
 }
 
@@ -469,7 +469,7 @@ ssl_connect(struct vconn *vconn)
              * certificate, but that's more trouble than it's worth.  These
              * connections will succeed the next time they retry, assuming that
              * they have a certificate against the correct CA.) */
-            VLOG_ERR("rejecting SSL connection during bootstrap race window");
+            VLOG_ERR(LOG_MODULE, "rejecting SSL connection during bootstrap race window");
             return EPROTO;
         } else {
             return 0;
@@ -499,11 +499,11 @@ interpret_ssl_error(const char *function, int ret, int error,
 
     switch (error) {
     case SSL_ERROR_NONE:
-        VLOG_ERR_RL(&rl, "%s: unexpected SSL_ERROR_NONE", function);
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: unexpected SSL_ERROR_NONE", function);
         break;
 
     case SSL_ERROR_ZERO_RETURN:
-        VLOG_ERR_RL(&rl, "%s: unexpected SSL_ERROR_ZERO_RETURN", function);
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: unexpected SSL_ERROR_ZERO_RETURN", function);
         break;
 
     case SSL_ERROR_WANT_READ:
@@ -515,15 +515,15 @@ interpret_ssl_error(const char *function, int ret, int error,
         return EAGAIN;
 
     case SSL_ERROR_WANT_CONNECT:
-        VLOG_ERR_RL(&rl, "%s: unexpected SSL_ERROR_WANT_CONNECT", function);
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: unexpected SSL_ERROR_WANT_CONNECT", function);
         break;
 
     case SSL_ERROR_WANT_ACCEPT:
-        VLOG_ERR_RL(&rl, "%s: unexpected SSL_ERROR_WANT_ACCEPT", function);
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: unexpected SSL_ERROR_WANT_ACCEPT", function);
         break;
 
     case SSL_ERROR_WANT_X509_LOOKUP:
-        VLOG_ERR_RL(&rl, "%s: unexpected SSL_ERROR_WANT_X509_LOOKUP",
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: unexpected SSL_ERROR_WANT_X509_LOOKUP",
                     function);
         break;
 
@@ -532,16 +532,16 @@ interpret_ssl_error(const char *function, int ret, int error,
         if (queued_error == 0) {
             if (ret < 0) {
                 int status = errno;
-                VLOG_WARN_RL(&rl, "%s: system error (%s)",
+                VLOG_WARN_RL(LOG_MODULE, &rl, "%s: system error (%s)",
                              function, strerror(status));
                 return status;
             } else {
-                VLOG_WARN_RL(&rl, "%s: unexpected SSL connection close",
+                VLOG_WARN_RL(LOG_MODULE, &rl, "%s: unexpected SSL connection close",
                              function);
                 return EPROTO;
             }
         } else {
-            VLOG_WARN_RL(&rl, "%s: %s",
+            VLOG_WARN_RL(LOG_MODULE, &rl, "%s: %s",
                          function, ERR_error_string(queued_error, NULL));
             break;
         }
@@ -550,17 +550,17 @@ interpret_ssl_error(const char *function, int ret, int error,
     case SSL_ERROR_SSL: {
         int queued_error = ERR_get_error();
         if (queued_error != 0) {
-            VLOG_WARN_RL(&rl, "%s: %s",
+            VLOG_WARN_RL(LOG_MODULE, &rl, "%s: %s",
                          function, ERR_error_string(queued_error, NULL));
         } else {
-            VLOG_ERR_RL(&rl, "%s: SSL_ERROR_SSL without queued error",
+            VLOG_ERR_RL(LOG_MODULE, &rl, "%s: SSL_ERROR_SSL without queued error",
                         function);
         }
         break;
     }
 
     default:
-        VLOG_ERR_RL(&rl, "%s: bad SSL error code %d", function, error);
+        VLOG_ERR_RL(LOG_MODULE, &rl, "%s: bad SSL error code %d", function, error);
         break;
     }
     return EIO;
@@ -587,7 +587,7 @@ again:
         struct ofp_header *oh = rx->data;
         size_t length = ntohs(oh->length);
         if (length < sizeof(struct ofp_header)) {
-            VLOG_ERR_RL(&rl, "received too-short ofp_header (%zu bytes)",
+            VLOG_ERR_RL(LOG_MODULE, &rl, "received too-short ofp_header (%zu bytes)",
                         length);
             return EPROTO;
         }
@@ -631,7 +631,7 @@ again:
         if (error == SSL_ERROR_ZERO_RETURN) {
             /* Connection closed (EOF). */
             if (rx->size) {
-                VLOG_WARN_RL(&rl, "SSL_read: unexpected connection close");
+                VLOG_WARN_RL(LOG_MODULE, &rl, "SSL_read: unexpected connection close");
                 return EPROTO;
             } else {
                 return EOF;
@@ -679,7 +679,7 @@ ssl_do_tx(struct vconn *vconn)
         } else {
             int ssl_error = SSL_get_error(sslv->ssl, ret);
             if (ssl_error == SSL_ERROR_ZERO_RETURN) {
-                VLOG_WARN_RL(&rl, "SSL_write: connection closed");
+                VLOG_WARN_RL(LOG_MODULE, &rl, "SSL_write: connection closed");
                 return EPIPE;
             } else {
                 return interpret_ssl_error("SSL_write", ret, ssl_error,
@@ -824,13 +824,13 @@ pssl_open(const char *name, char *suffix, struct pvconn **pvconnp)
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         int error = errno;
-        VLOG_ERR("%s: socket: %s", name, strerror(error));
+        VLOG_ERR(LOG_MODULE, "%s: socket: %s", name, strerror(error));
         return error;
     }
 
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) < 0) {
         int error = errno;
-        VLOG_ERR("%s: setsockopt(SO_REUSEADDR): %s", name, strerror(errno));
+        VLOG_ERR(LOG_MODULE, "%s: setsockopt(SO_REUSEADDR): %s", name, strerror(errno));
         return error;
     }
 
@@ -841,7 +841,7 @@ pssl_open(const char *name, char *suffix, struct pvconn **pvconnp)
     retval = bind(fd, (struct sockaddr *) &sin, sizeof sin);
     if (retval < 0) {
         int error = errno;
-        VLOG_ERR("%s: bind: %s", name, strerror(error));
+        VLOG_ERR(LOG_MODULE, "%s: bind: %s", name, strerror(error));
         close(fd);
         return error;
     }
@@ -849,7 +849,7 @@ pssl_open(const char *name, char *suffix, struct pvconn **pvconnp)
     retval = listen(fd, 10);
     if (retval < 0) {
         int error = errno;
-        VLOG_ERR("%s: listen: %s", name, strerror(error));
+        VLOG_ERR(LOG_MODULE, "%s: listen: %s", name, strerror(error));
         close(fd);
         return error;
     }
@@ -889,7 +889,7 @@ pssl_accept(struct pvconn *pvconn, struct vconn **new_vconnp)
     if (new_fd < 0) {
         int error = errno;
         if (error != EAGAIN) {
-            VLOG_DBG_RL(&rl, "accept: %s", strerror(error));
+            VLOG_DBG_RL(LOG_MODULE, &rl, "accept: %s", strerror(error));
         }
         return error;
     }
@@ -956,13 +956,13 @@ do_ssl_init(void)
 
     method = TLSv1_method();
     if (method == NULL) {
-        VLOG_ERR("TLSv1_method: %s", ERR_error_string(ERR_get_error(), NULL));
+        VLOG_ERR(LOG_MODULE, "TLSv1_method: %s", ERR_error_string(ERR_get_error(), NULL));
         return ENOPROTOOPT;
     }
 
     ctx = SSL_CTX_new(method);
     if (ctx == NULL) {
-        VLOG_ERR("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
+        VLOG_ERR(LOG_MODULE, "SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
         return ENOPROTOOPT;
     }
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
@@ -1004,14 +1004,14 @@ tmp_dh_callback(SSL *ssl UNUSED, int is_export UNUSED, int keylength)
             return dh->dh;
         }
     }
-    VLOG_ERR_RL(&rl, "no Diffie-Hellman parameters for key length %d",
+    VLOG_ERR_RL(LOG_MODULE, &rl, "no Diffie-Hellman parameters for key length %d",
                 keylength);
     return NULL;
 }
 
 /* Returns true if SSL is at least partially configured. */
 bool
-vconn_ssl_is_configured(void) 
+vconn_ssl_is_configured(void)
 {
     return has_private_key || has_certificate || has_ca_cert;
 }
@@ -1023,7 +1023,7 @@ vconn_ssl_set_private_key_file(const char *file_name)
         return;
     }
     if (SSL_CTX_use_PrivateKey_file(ctx, file_name, SSL_FILETYPE_PEM) != 1) {
-        VLOG_ERR("SSL_use_PrivateKey_file: %s",
+        VLOG_ERR(LOG_MODULE, "SSL_use_PrivateKey_file: %s",
                  ERR_error_string(ERR_get_error(), NULL));
         return;
     }
@@ -1037,7 +1037,7 @@ vconn_ssl_set_certificate_file(const char *file_name)
         return;
     }
     if (SSL_CTX_use_certificate_chain_file(ctx, file_name) != 1) {
-        VLOG_ERR("SSL_use_certificate_file: %s",
+        VLOG_ERR(LOG_MODULE, "SSL_use_certificate_file: %s",
                  ERR_error_string(ERR_get_error(), NULL));
         return;
     }
@@ -1062,7 +1062,7 @@ read_cert_file(const char *file_name, X509 ***certs, size_t *n_certs)
 
     file = fopen(file_name, "r");
     if (!file) {
-        VLOG_ERR("failed to open %s for reading: %s",
+        VLOG_ERR(LOG_MODULE, "failed to open %s for reading: %s",
                  file_name, strerror(errno));
         return errno;
     }
@@ -1076,7 +1076,7 @@ read_cert_file(const char *file_name, X509 ***certs, size_t *n_certs)
         if (!certificate) {
             size_t i;
 
-            VLOG_ERR("PEM_read_X509 failed reading %s: %s",
+            VLOG_ERR(LOG_MODULE, "PEM_read_X509 failed reading %s: %s",
                      file_name, ERR_error_string(ERR_get_error(), NULL));
             for (i = 0; i < *n_certs; i++) {
                 X509_free((*certs)[i]);
@@ -1125,7 +1125,7 @@ vconn_ssl_set_peer_ca_cert_file(const char *file_name)
     if (!read_cert_file(file_name, &certs, &n_certs)) {
         for (i = 0; i < n_certs; i++) {
             if (SSL_CTX_add_extra_chain_cert(ctx, certs[i]) != 1) {
-                VLOG_ERR("SSL_CTX_add_extra_chain_cert: %s",
+                VLOG_ERR(LOG_MODULE, "SSL_CTX_add_extra_chain_cert: %s",
                          ERR_error_string(ERR_get_error(), NULL));
             }
         }
@@ -1155,7 +1155,7 @@ log_ca_cert(const char *file_name, X509 *cert)
         }
     }
     subject = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
-    VLOG_INFO("Trusting CA cert from %s (%s) (fingerprint %s)", file_name,
+    VLOG_INFO(LOG_MODULE, "Trusting CA cert from %s (%s) (fingerprint %s)", file_name,
               subject ? subject : "<out of memory>", ds_cstr(&fp));
     free(subject);
     ds_destroy(&fp);
@@ -1187,7 +1187,7 @@ vconn_ssl_set_ca_cert_file(const char *file_name, bool bootstrap)
         for (i = 0; i < n_certs; i++) {
             /* SSL_CTX_add_client_CA makes a copy of the relevant data. */
             if (SSL_CTX_add_client_CA(ctx, certs[i]) != 1) {
-                VLOG_ERR("failed to add client certificate %d from %s: %s",
+                VLOG_ERR(LOG_MODULE, "failed to add client certificate %d from %s: %s",
                          i, file_name,
                          ERR_error_string(ERR_get_error(), NULL));
             } else {
@@ -1199,7 +1199,7 @@ vconn_ssl_set_ca_cert_file(const char *file_name, bool bootstrap)
         /* Set up CAs for OpenSSL to trust in verifying the peer's
          * certificate. */
         if (SSL_CTX_load_verify_locations(ctx, file_name, NULL) != 1) {
-            VLOG_ERR("SSL_CTX_load_verify_locations: %s",
+            VLOG_ERR(LOG_MODULE, "SSL_CTX_load_verify_locations: %s",
                      ERR_error_string(ERR_get_error(), NULL));
             return;
         }

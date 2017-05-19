@@ -571,7 +571,7 @@ packet_handle_std_destroy(struct packet_handle_std *handle) {
         	free(iter->value);
         	free(iter);
     	}
-    }	
+    }
 	handle->match.dirty = false;
     }
 
