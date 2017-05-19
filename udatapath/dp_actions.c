@@ -1134,7 +1134,7 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
         case (OFPP_LOCAL):
         default: {
             if (pkt->in_port == out_port) {
-                VLOG_WARN_RL(LOG_MODULE, &rl, "can't directly forward to input port.");
+                //VLOG_WARN_RL(LOG_MODULE, &rl, "can't directly forward to input port.");
             } else {
                 VLOG_DBG_RL(LOG_MODULE, &rl, "Outputting packet on port %u.", out_port);
                 dp_ports_output(pkt->dp, pkt->buffer, out_port, out_queue);

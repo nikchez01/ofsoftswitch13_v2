@@ -1,6 +1,6 @@
 /* Copyright (c) 2008, 2009 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -91,7 +91,7 @@ static struct ofl_exp_stats ofl_exp_stats =
          .reply_to_string = ofl_exp_stats_reply_to_string};
 
 static struct ofl_exp_field ofl_exp_field =
-        {.unpack     = ofl_exp_field_unpack, 
+        {.unpack     = ofl_exp_field_unpack,
          .pack       = ofl_exp_field_pack,
          .match      = ofl_exp_field_match,
          .compare    = ofl_exp_field_compare,
@@ -192,7 +192,7 @@ vconn_usage(bool active, bool passive, bool bootstrap UNUSED)
     /* Really this should be implemented via callbacks into the vconn
      * providers, but that seems too heavy-weight to bother with at the
      * moment. */
-    
+
     printf("\n");
     if (active) {
         printf("Active OpenFlow connection methods:\n");
@@ -319,7 +319,7 @@ vconn_get_name(const struct vconn *vconn)
 /* Returns the IP address of the peer, or 0 if the peer is not connected over
  * an IP-based protocol or if its IP address is not yet known. */
 uint32_t
-vconn_get_ip(const struct vconn *vconn) 
+vconn_get_ip(const struct vconn *vconn)
 {
     return vconn->ip;
 }
@@ -338,7 +338,7 @@ vconn_is_reconnectable(const struct vconn *vconn)
 }
 
 static void
-vcs_connecting(struct vconn *vconn) 
+vcs_connecting(struct vconn *vconn)
 {
     int retval = (vconn->class->connect)(vconn);
     assert(retval != EINPROGRESS);
@@ -625,8 +625,12 @@ do_send(struct vconn *vconn, struct ofpbuf *buf)
 {
     int retval;
 
-    assert(buf->size >= sizeof(struct ofp_header));
-    assert(((struct ofp_header *) buf->data)->length == htons(buf->size));
+    if ((buf->size < sizeof(struct ofp_header)) ||
+       (((struct ofp_header *) buf->data)->length != htons(buf->size))) {
+	    VLOG_DBG_RL(LOG_MODULE, &rl, "do_send: broken of message!");
+	    return -1;
+    }
+
     if (!VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
         retval = (vconn->class->send)(vconn, buf);
     } else {
@@ -699,19 +703,19 @@ vconn_recv_xid(struct vconn *vconn, uint32_t xid, struct ofpbuf **replyp)
             *replyp = NULL;
             return error;
         }
-        /* Multipart messages 
+        /* Multipart messages
            TODO: It's only getting the last message.
            Should return an array of multiparted
            messages*/
         type = ((struct ofp_header*) reply->data)->type;
         if (type == OFPT_MULTIPART_REPLY || type == OFPT_MULTIPART_REQUEST){
             reply_flag = ((struct ofp_multipart_reply *) reply->data)->flags;
-            
+
             while(ntohs(reply_flag) == OFPMPF_REPLY_MORE){
                error = vconn_recv_block(vconn, &reply);
                reply_flag = ((struct ofp_multipart_reply *) reply->data)->flags;
             }
-        }    
+        }
         recv_xid = ((struct ofp_header *) reply->data)->xid;
         if (xid == recv_xid) {
             *replyp = reply;

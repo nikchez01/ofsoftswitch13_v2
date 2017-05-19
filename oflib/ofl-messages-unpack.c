@@ -1664,7 +1664,7 @@ ofl_msg_unpack(uint8_t const *buf, size_t buf_len, struct ofl_msg_header **msg, 
     }
 
     if (len != ntohs(oh->length)) {
-        OFL_LOG_WARN(LOG_MODULE, "Received message length does not match the length field.");
+        OFL_LOG_WARN(LOG_MODULE, "Received message length does not match the length field (buf_len:%zu, oh_len:%zu).", len, ntohs(oh->length));
         return ofl_error(OFPET_BAD_REQUEST, OFPBRC_BAD_LEN);
     }
 

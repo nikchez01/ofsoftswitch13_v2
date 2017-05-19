@@ -116,7 +116,7 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
 {
     struct stream_vconn *s = stream_vconn_cast(vconn);
     struct ofpbuf *rx;
-    size_t want_bytes;
+    size_t want_bytes = sizeof(struct ofp_header);
     ssize_t retval;
 
     if (s->rxbuf == NULL) {
@@ -125,14 +125,20 @@ stream_recv(struct vconn *vconn, struct ofpbuf **bufferp)
     rx = s->rxbuf;
 
 again:
+
     if (sizeof(struct ofp_header) > rx->size) {
         want_bytes = sizeof(struct ofp_header) - rx->size;
     } else {
         struct ofp_header *oh = rx->data;
         size_t length = ntohs(oh->length);
         if (length < sizeof(struct ofp_header)) {
-            VLOG_ERR_RL(LOG_MODULE, &rl, "received too-short ofp_header (%zu bytes)",
-                        length);
+	    struct ds msg = DS_EMPTY_INITIALIZER;
+            ds_put_format(&msg, "STREAM: %s: received too-short ofp_header (%zu bytes)\n", vconn->name, length);
+            ds_put_hex_dump(&msg, rx->data, rx->size, 0, true);
+            VLOG_ERR_RL(LOG_MODULE, &rl, "%s", ds_cstr(&msg));
+            ds_destroy(&msg);
+            // VLOG_ERR_RL(LOG_MODULE, &rl, "received too-short ofp_header (%zu bytes)",
+            //            length);
             return EPROTO;
         }
         want_bytes = length - rx->size;
@@ -167,6 +173,7 @@ again:
     } else {
         return errno;
     }
+
 }
 
 static void
