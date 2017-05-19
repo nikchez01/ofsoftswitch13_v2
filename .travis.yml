@@ -3,9 +3,7 @@ compiler:
   - gcc
 
 install:
-  - "./boot.sh"
-
-script:
-  - "./configure"
-  - "make"
-  - "sudo make install"
+  - mkdir debug
+  - cd debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - make
