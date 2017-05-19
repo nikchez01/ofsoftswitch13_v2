@@ -29,7 +29,10 @@
  *
  */
 
-#include "compiler.h"
+#include "lib/compiler.h"
+#include "lib/packets.h"
+#include "lib/vlog.h"
+
 #include "dp_capabilities.h"
 #include "dp_control.h"
 #include "dp_actions.h"
@@ -37,14 +40,12 @@
 #include "dp_ports.h"
 #include "group_table.h"
 #include "meter_table.h"
-#include "packets.h"
 #include "pipeline.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-messages.h"
 #include "oflib/ofl-log.h"
 #include "openflow/openflow.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_dp_ctrl
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

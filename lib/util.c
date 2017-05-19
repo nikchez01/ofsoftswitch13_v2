@@ -1,6 +1,6 @@
 /* Copyright (c) 2008 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -39,16 +39,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_BSD_STRING
+#include <bsd/string.h>
+#endif
+
 const char *program_name;
 
 void
-out_of_memory(void) 
+out_of_memory(void)
 {
     ofp_fatal(0, "virtual memory exhausted");
 }
 
 void *
-xcalloc(size_t count, size_t size) 
+xcalloc(size_t count, size_t size)
 {
     void *p = count && size ? calloc(count, size) : malloc(1);
     if (p == NULL) {
@@ -58,7 +62,7 @@ xcalloc(size_t count, size_t size)
 }
 
 void *
-xmalloc(size_t size) 
+xmalloc(size_t size)
 {
     void *p = malloc(size ? size : 1);
     if (p == NULL) {
@@ -68,7 +72,7 @@ xmalloc(size_t size)
 }
 
 void *
-xrealloc(void *p, size_t size) 
+xrealloc(void *p, size_t size)
 {
     p = realloc(p, size ? size : 1);
     if (p == NULL) {
@@ -95,7 +99,7 @@ xmemdup0(const char *p_, size_t length)
 }
 
 char *
-xstrdup(const char *s) 
+xstrdup(const char *s)
 {
     return xmemdup0(s, strlen(s));
 }
@@ -138,6 +142,7 @@ xasprintf(const char *format, ...)
     return s;
 }
 
+#ifndef HAVE_BSD_STRING
 void
 strlcpy(char *dst, const char *src, size_t size)
 {
@@ -148,6 +153,7 @@ strlcpy(char *dst, const char *src, size_t size)
         dst[n_copy] = '\0';
     }
 }
+#endif
 
 void
 ofp_fatal(int err_no, const char *format, ...)

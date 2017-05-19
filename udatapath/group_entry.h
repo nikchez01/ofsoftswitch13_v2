@@ -33,7 +33,7 @@
 #define GROUP_entry_H 1
 
 #include <stdbool.h>
-#include "hmap.h"
+#include "lib/hmap.h"
 #include "packet.h"
 #include "group_table.h"
 #include "oflib/ofl-structs.h"

@@ -30,8 +30,8 @@
 
 #include "ofl-structs.h"
 #include "lib/hash.h"
+#include "lib/compiler.h"
 #include "oxm-match.h"
-#include "compiler.h"
 
 
 void

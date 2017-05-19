@@ -33,8 +33,8 @@
 #define METER_ENTRY_H 1
 
 #include <stdbool.h>
-#include "hmap.h"
-#include "list.h"
+#include "lib/hmap.h"
+#include "lib/list.h"
 #include "packet.h"
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-messages.h"
@@ -64,7 +64,7 @@ struct meter_entry {
 	struct ofl_meter_config		*config;		/* Meter configuration */
 
     uint64_t                    created;  /* time the entry was created at. */
-    	
+
 	struct list                 flow_refs;		/* references to flows referencing the meter. */
 
 };

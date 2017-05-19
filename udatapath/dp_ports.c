@@ -42,18 +42,18 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
+#include "lib/packets.h"
+#include "lib/util.h"
+#include "lib/vlog.h"
 #include "dp_exp.h"
 #include "dp_ports.h"
 #include "datapath.h"
-#include "packets.h"
 #include "pipeline.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-messages.h"
 #include "oflib-exp/ofl-exp-openflow.h"
 #include "oflib/ofl-log.h"
-#include "util.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_dp_ports
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

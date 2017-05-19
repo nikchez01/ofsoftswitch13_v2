@@ -1,5 +1,5 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
- * Copyright (c) 2012, CPqD, Brazil 
+ * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,9 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include "dynamic-string.h"
+#include "lib/dynamic-string.h"
+#include "lib/vlog.h"
+
 #include "datapath.h"
 #include "flow_table.h"
 #include "flow_entry.h"
@@ -40,7 +42,6 @@
 #include "dp_capabilities.h"
 //#include "packet_handle_std.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_flow_t
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);
@@ -61,11 +62,11 @@ uint32_t  oxm_ids[]={OXM_OF_IN_PORT,OXM_OF_IN_PHY_PORT,OXM_OF_METADATA,OXM_OF_ET
 
 uint32_t wildcarded[] = {OXM_OF_METADATA, OXM_OF_ETH_DST, OXM_OF_ETH_SRC, OXM_OF_VLAN_VID, OXM_OF_IPV4_SRC,
                                OXM_OF_IPV4_DST, OXM_OF_TCP_FLAGS, OXM_OF_ARP_SPA, OXM_OF_ARP_TPA, OXM_OF_ARP_SHA, OXM_OF_ARP_THA, OXM_OF_IPV6_SRC,
-                               OXM_OF_IPV6_DST , OXM_OF_IPV6_FLABEL, OXM_OF_PBB_ISID, OXM_OF_TUNNEL_ID, OXM_OF_IPV6_EXTHDR};                        
+                               OXM_OF_IPV6_DST , OXM_OF_IPV6_FLABEL, OXM_OF_PBB_ISID, OXM_OF_TUNNEL_ID, OXM_OF_IPV6_EXTHDR};
 
 #define NUM_WILD_IDS    (sizeof(wildcarded) / sizeof(uint32_t))
 
-struct ofl_instruction_header instructions[] = { {OFPIT_GOTO_TABLE}, 
+struct ofl_instruction_header instructions[] = { {OFPIT_GOTO_TABLE},
                   {OFPIT_WRITE_METADATA },{OFPIT_WRITE_ACTIONS},{OFPIT_APPLY_ACTIONS},
                   {OFPIT_CLEAR_ACTIONS},{OFPIT_METER}} ;
 struct ofl_instruction_header instructions_nogoto[] = {
@@ -74,10 +75,10 @@ struct ofl_instruction_header instructions_nogoto[] = {
 
 #define N_INSTRUCTIONS  (sizeof(instructions) / sizeof(struct ofl_instruction_header))
 
-struct ofl_action_header actions[] = { {OFPAT_OUTPUT, 4}, 
+struct ofl_action_header actions[] = { {OFPAT_OUTPUT, 4},
                   {OFPAT_COPY_TTL_OUT, 4},{OFPAT_COPY_TTL_IN, 4},{OFPAT_SET_MPLS_TTL, 4},
                   {OFPAT_DEC_MPLS_TTL, 4},{OFPAT_PUSH_VLAN, 4},{OFPAT_POP_VLAN, 4}, {OFPAT_PUSH_MPLS, 4},
-                  {OFPAT_POP_MPLS, 4},{OFPAT_SET_QUEUE, 4}, {OFPAT_GROUP, 4}, {OFPAT_SET_NW_TTL, 4}, {OFPAT_DEC_NW_TTL, 4}, 
+                  {OFPAT_POP_MPLS, 4},{OFPAT_SET_QUEUE, 4}, {OFPAT_GROUP, 4}, {OFPAT_SET_NW_TTL, 4}, {OFPAT_DEC_NW_TTL, 4},
                   {OFPAT_SET_FIELD, 4}, {OFPAT_PUSH_PBB, 4}, {OFPAT_POP_PBB, 4} } ;
 
 #define N_ACTIONS       (sizeof(actions) / sizeof(struct ofl_action_header))
@@ -148,7 +149,7 @@ flow_table_add(struct flow_table *table, struct ofl_msg_flow_mod *mod, bool chec
     return 0;
 }
 
-/* Handles flow mod messages with MODIFY command. 
+/* Handles flow mod messages with MODIFY command.
     If the flow doesn't exists don't do nothing*/
 static ofl_err
 flow_table_modify(struct flow_table *table, struct ofl_msg_flow_mod *mod, bool strict, bool *insts_kept, struct ofl_exp *exp) {
@@ -230,7 +231,7 @@ flow_table_lookup(struct flow_table *table, struct packet *pkt, struct ofl_exp *
 
                     table->stats->matched_count++;
                     return entry;
-                } 
+                }
                 break;
 
                 break;
@@ -264,7 +265,7 @@ flow_table_timeout(struct flow_table *table) {
 }
 
 
-static void 
+static void
 flow_table_create_property(struct ofl_table_feature_prop_header **prop, enum ofp_table_feature_prop_type type){
 
     switch(type){
@@ -281,9 +282,9 @@ flow_table_create_property(struct ofl_table_feature_prop_header **prop, enum ofp
               inst_capabilities->ids_num = N_INSTRUCTIONS - 1;
               memcpy(inst_capabilities->instruction_ids, instructions_nogoto, sizeof(instructions_nogoto));
 	    }
-            inst_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&inst_capabilities->header, NULL);            
+            inst_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&inst_capabilities->header, NULL);
             (*prop) =  (struct ofl_table_feature_prop_header*) inst_capabilities;
-            break;        
+            break;
         }
         case OFPTFPT_NEXT_TABLES:
         case OFPTFPT_NEXT_TABLES_MISS:{
@@ -295,7 +296,7 @@ flow_table_create_property(struct ofl_table_feature_prop_header **prop, enum ofp
              tbl_reachable->next_table_ids = xmalloc(sizeof(uint8_t) * tbl_reachable->table_num);
              for(i=0; i < tbl_reachable->table_num; i++)
                 tbl_reachable->next_table_ids[i] = i;
-             tbl_reachable->header.length = ofl_structs_table_features_properties_ofp_len(&tbl_reachable->header, NULL); 
+             tbl_reachable->header.length = ofl_structs_table_features_properties_ofp_len(&tbl_reachable->header, NULL);
              *prop = (struct ofl_table_feature_prop_header*) tbl_reachable;
              break;
         }
@@ -309,8 +310,8 @@ flow_table_create_property(struct ofl_table_feature_prop_header **prop, enum ofp
              act_capabilities->actions_num= N_ACTIONS;
              act_capabilities->action_ids = xmalloc(sizeof(actions));
              memcpy(act_capabilities->action_ids, actions, sizeof(actions));
-             act_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&act_capabilities->header, NULL);                         
-             *prop =  (struct ofl_table_feature_prop_header*) act_capabilities; 
+             act_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&act_capabilities->header, NULL);
+             *prop =  (struct ofl_table_feature_prop_header*) act_capabilities;
              break;
         }
         case OFPTFPT_MATCH:
@@ -318,31 +319,31 @@ flow_table_create_property(struct ofl_table_feature_prop_header **prop, enum ofp
         case OFPTFPT_APPLY_SETFIELD_MISS:
         case OFPTFPT_WRITE_SETFIELD:
         case OFPTFPT_WRITE_SETFIELD_MISS:{
-            struct ofl_table_feature_prop_oxm *oxm_capabilities; 
+            struct ofl_table_feature_prop_oxm *oxm_capabilities;
             oxm_capabilities = xmalloc(sizeof(struct ofl_table_feature_prop_oxm));
             oxm_capabilities->header.type = type;
             oxm_capabilities->oxm_num = NUM_OXM_IDS;
             oxm_capabilities->oxm_ids = xmalloc(sizeof(oxm_ids));
             memcpy(oxm_capabilities->oxm_ids, oxm_ids, sizeof(oxm_ids));
-            oxm_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&oxm_capabilities->header, NULL);             
+            oxm_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&oxm_capabilities->header, NULL);
             *prop =  (struct ofl_table_feature_prop_header*) oxm_capabilities;
             break;
-        }  
+        }
         case OFPTFPT_WILDCARDS:{
             struct ofl_table_feature_prop_oxm *oxm_capabilities;
-            oxm_capabilities = xmalloc(sizeof(struct ofl_table_feature_prop_oxm)); 
+            oxm_capabilities = xmalloc(sizeof(struct ofl_table_feature_prop_oxm));
             oxm_capabilities->header.type = type;
             oxm_capabilities->oxm_num = NUM_WILD_IDS;
             oxm_capabilities->oxm_ids = xmalloc(sizeof(wildcarded));
             memcpy(oxm_capabilities->oxm_ids, wildcarded, sizeof(wildcarded));
-            oxm_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&oxm_capabilities->header, NULL);                         
+            oxm_capabilities->header.length = ofl_structs_table_features_properties_ofp_len(&oxm_capabilities->header, NULL);
             *prop =  (struct ofl_table_feature_prop_header*) oxm_capabilities;
             break;
-        }        
+        }
         case OFPTFPT_EXPERIMENTER:
         case OFPTFPT_EXPERIMENTER_MISS:{
-            break;        
-        }        
+            break;
+        }
     }
 }
 
@@ -352,7 +353,7 @@ flow_table_features(struct ofl_table_features *features){
     int type, j;
     features->properties = (struct ofl_table_feature_prop_header **) xmalloc(sizeof(struct ofl_table_feature_prop_header *) * TABLE_FEATURES_NUM);
     j = 0;
-    for(type = OFPTFPT_INSTRUCTIONS; type <= OFPTFPT_APPLY_SETFIELD_MISS; type++){ 
+    for(type = OFPTFPT_INSTRUCTIONS; type <= OFPTFPT_APPLY_SETFIELD_MISS; type++){
         //features->properties[j] = xmalloc(sizeof(struct ofl_table_feature_prop_header));
         flow_table_create_property(&features->properties[j], type);
         if(type == OFPTFPT_MATCH|| type == OFPTFPT_WILDCARDS){
@@ -378,7 +379,7 @@ flow_table_create(struct datapath *dp, uint8_t table_id) {
     table = xmalloc(sizeof(struct flow_table));
     table->dp = dp;
     table->disabled = 0;
-    
+
     /*Init table stats */
     table->stats = xmalloc(sizeof(struct ofl_table_stats));
     table->stats->table_id      = table_id;
@@ -390,7 +391,7 @@ flow_table_create(struct datapath *dp, uint8_t table_id) {
     table->features = xmalloc(sizeof(struct ofl_table_features));
     table->features->table_id = table_id;
     table->features->name          = ds_cstr(&string);
-    table->features->metadata_match = 0xffffffffffffffff; 
+    table->features->metadata_match = 0xffffffffffffffff;
     table->features->metadata_write = 0xffffffffffffffff;
     table->features->config        = OFPTC_TABLE_MISS_CONTROLLER;
     table->features->max_entries   = FLOW_TABLE_MAX_ENTRIES;
@@ -413,9 +414,9 @@ flow_table_destroy(struct flow_table *table) {
     LIST_FOR_EACH_SAFE (entry, next, struct flow_entry, match_node, &table->match_entries) {
         flow_entry_destroy(entry);
     }
-      
+
     j = 0;
-    for(type = OFPTFPT_INSTRUCTIONS; type <= OFPTFPT_APPLY_SETFIELD_MISS; type++){ 
+    for(type = OFPTFPT_INSTRUCTIONS; type <= OFPTFPT_APPLY_SETFIELD_MISS; type++){
         flow_table_destroy_property(table->features->properties[j], type);
         if(type == OFPTFPT_MATCH|| type == OFPTFPT_WILDCARDS){
             type++;
@@ -466,10 +467,10 @@ flow_table_aggregate_stats(struct flow_table *table, struct ofl_msg_multipart_re
     LIST_FOR_EACH(entry, struct flow_entry, match_node, &table->match_entries) {
         if ((msg->out_port == OFPP_ANY || flow_entry_has_out_port(entry, msg->out_port)) &&
             (msg->out_group == OFPG_ANY || flow_entry_has_out_group(entry, msg->out_group))) {
-			
+
 			if (!entry->no_pkt_count)
             	(*packet_count) += entry->stats->packet_count;
-			if (!entry->no_byt_count)            
+			if (!entry->no_byt_count)
 				(*byte_count)   += entry->stats->byte_count;
             (*flow_count)++;
         }
@@ -477,7 +478,7 @@ flow_table_aggregate_stats(struct flow_table *table, struct ofl_msg_multipart_re
 
 }
 
-void 
+void
 flow_table_destroy_property(struct ofl_table_feature_prop_header *prop, enum ofp_table_feature_prop_type type){
     switch(type){
         case OFPTFPT_INSTRUCTIONS:
@@ -486,7 +487,7 @@ flow_table_destroy_property(struct ofl_table_feature_prop_header *prop, enum ofp
             int i;
             free(inst_capabilities->instruction_ids);
             free(inst_capabilities);
-            break;        
+            break;
         }
         case OFPTFPT_NEXT_TABLES:
         case OFPTFPT_NEXT_TABLES_MISS:{
@@ -513,16 +514,16 @@ flow_table_destroy_property(struct ofl_table_feature_prop_header *prop, enum ofp
             free(oxm_capabilities->oxm_ids);
             free(oxm_capabilities);
             break;
-        } 
+        }
         case OFPTFPT_WILDCARDS:{
             struct ofl_table_feature_prop_oxm *oxm_capabilities = (struct ofl_table_feature_prop_oxm *) prop;
             free(oxm_capabilities->oxm_ids);
             free(oxm_capabilities);
             break;
-        }        
+        }
         case OFPTFPT_EXPERIMENTER:
         case OFPTFPT_EXPERIMENTER_MISS:{
-            break;        
+            break;
         }
     }
     return;

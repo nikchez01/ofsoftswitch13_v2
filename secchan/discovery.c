@@ -36,16 +36,16 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include "dhcp-client.h"
-#include "dhcp.h"
-#include "netdev.h"
+#include "lib/dhcp-client.h"
+#include "lib/dhcp.h"
+#include "lib/netdev.h"
+#include "lib/packets.h"
+#include "lib/vlog.h"
 #include "openflow/openflow.h"
-#include "packets.h"
 #include "port-watcher.h"
 #include "secchan.h"
 #include "status.h"
 
-#include "vlog.h"
 
 #define LOG_MODULE VLM_discovery
 
@@ -71,7 +71,7 @@ discovery_status_cb(struct status_reply *sr, void *d_)
     if (d->dhcp) {
         status_reply_put(sr, "state=%s", dhclient_get_state(d->dhcp));
         status_reply_put(sr, "state-elapsed=%u",
-                         dhclient_get_state_elapsed(d->dhcp)); 
+                         dhclient_get_state_elapsed(d->dhcp));
         if (dhclient_is_bound(d->dhcp)) {
             uint32_t ip = dhclient_get_ip(d->dhcp);
             uint32_t netmask = dhclient_get_netmask(d->dhcp);
@@ -179,7 +179,7 @@ void
 discovery_question_connectivity(struct discovery *d)
 {
     if (d->dhcp) {
-        dhclient_force_renew(d->dhcp, 15); 
+        dhclient_force_renew(d->dhcp, 15);
     }
 }
 
@@ -220,7 +220,7 @@ void
 discovery_wait(struct discovery *d)
 {
     if (d->dhcp) {
-        dhclient_wait(d->dhcp); 
+        dhclient_wait(d->dhcp);
     }
 }
 

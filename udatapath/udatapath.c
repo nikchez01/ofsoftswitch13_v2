@@ -1,6 +1,6 @@
     /* Copyright (c) 2008 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -52,27 +52,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "command-line.h"
-#include "daemon.h"
+#include "lib/command-line.h"
+#include "lib/daemon.h"
+#include "lib/poll-loop.h"
+#include "lib/queue.h"
+#include "lib/util.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/vconn.h"
+#include "lib/dirs.h"
+#include "lib/vconn-ssl.h"
+#include "lib/vlog-socket.h"
+
 #include "datapath.h"
-#include "fault.h"
 #include "openflow/openflow.h"
-#include "poll-loop.h"
-#include "queue.h"
-#include "util.h"
-#include "rconn.h"
-#include "timeval.h"
-#include "vconn.h"
-#include "dirs.h"
-#include "vconn-ssl.h"
-#include "vlog-socket.h"
 
 #if defined(OF_HW_PLAT)
 #include <openflow/of_hw_api.h>
 #endif
 
-#define THIS_MODULE VLM_udatapath
-#include "vlog.h"
+#define LOG_MODULE VLM_udatapath
+#include "lib/vlog.h"
 
 extern struct datapath *dp_ref;
 
@@ -117,7 +117,6 @@ udatapath_cmd(int argc, char *argv[])
     int i, n;
 
     set_program_name(argv[0]);
-    register_fault_handlers();
     time_init();
     vlog_init();
 

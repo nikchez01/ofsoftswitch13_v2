@@ -35,14 +35,14 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "util.h"
-#include "rconn.h"
+#include "lib/util.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/sat-math.h"
+#include "lib/vlog.h"
 #include "secchan.h"
 #include "status.h"
-#include "timeval.h"
-#include "sat-math.h"
 #include "failover.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_failover
 

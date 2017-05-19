@@ -31,6 +31,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "lib/vlog.h"
+
 #include "datapath.h"
 #include "dp_exp.h"
 #include "dp_actions.h"
@@ -46,7 +48,6 @@
 #include "openflow/openflow-ext.h"
 #include "openflow/nicira-ext.h"
 #include "openflow/beba-ext.h"
-#include "vlog.h"
 #include "pipeline.h"
 #include <sys/time.h>
 #include "lib/hash.h"

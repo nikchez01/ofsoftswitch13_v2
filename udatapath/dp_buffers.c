@@ -40,10 +40,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "lib/timeval.h"
+#include "lib/vlog.h"
 #include "dp_buffers.h"
-#include "timeval.h"
 #include "packet.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_dp_buf
 

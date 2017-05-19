@@ -17,7 +17,7 @@
 #include "lib/hash.h"
 #include "lib/ofp.h"
 #include "lib/ofpbuf.h"
-#include "timeval.h"
+#include "lib/timeval.h"
 
 
 #define LOG_MODULE ofl_exp_os

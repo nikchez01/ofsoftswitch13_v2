@@ -1,6 +1,6 @@
 /* Copyright (c) 2008 The Board of Trustees of The Leland Stanford
  * Junior University
- * 
+ *
  * We are making the OpenFlow specification and associated documentation
  * (Software) available for public use and benefit with the expectation
  * that others will use, modify and enhance the Software and contribute
@@ -13,10 +13,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -25,7 +25,7 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * The name and trademarks of copyright holder(s) may NOT be used in
  * advertising or publicity pertaining to the Software or any
  * derivatives without specific, written prior permission.
@@ -43,7 +43,7 @@
 #include "packets.h"
 
 #include "vlog.h"
-#define THIS_MODULE VLM_flow
+#define LOG_MODULE VLM_flow
 
 static struct arp_eth_header *
 pull_arp(struct ofpbuf *packet)
@@ -68,7 +68,7 @@ pull_ip(struct ofpbuf *packet)
 }
 
 static struct tcp_header *
-pull_tcp(struct ofpbuf *packet) 
+pull_tcp(struct ofpbuf *packet)
 {
     if (packet->size >= TCP_HEADER_LEN) {
         struct tcp_header *tcp = packet->data;
@@ -81,19 +81,19 @@ pull_tcp(struct ofpbuf *packet)
 }
 
 static struct udp_header *
-pull_udp(struct ofpbuf *packet) 
+pull_udp(struct ofpbuf *packet)
 {
     return ofpbuf_try_pull(packet, UDP_HEADER_LEN);
 }
 
 static struct icmp_header *
-pull_icmp(struct ofpbuf *packet) 
+pull_icmp(struct ofpbuf *packet)
 {
     return ofpbuf_try_pull(packet, ICMP_HEADER_LEN);
 }
 
 static struct eth_header *
-pull_eth(struct ofpbuf *packet) 
+pull_eth(struct ofpbuf *packet)
 {
     return ofpbuf_try_pull(packet, ETH_HEADER_LEN);
 }
@@ -224,7 +224,7 @@ flow_extract(struct ofpbuf *packet, uint32_t in_port, struct flow *flow)
 }
 
 void
-flow_print(FILE *stream, const struct flow *flow) 
+flow_print(FILE *stream, const struct flow *flow)
 {
     fprintf(stream,
             "port %04x vlan-vid %04x vlan-pcp %02x src-mac "ETH_ADDR_FMT" "

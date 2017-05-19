@@ -35,7 +35,7 @@
 #define PORT_WATCHER_H 1
 
 #include <stdint.h>
-#include "compiler.h"
+#include "lib/compiler.h"
 #include "secchan.h"
 
 struct ofp_port;

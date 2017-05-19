@@ -37,14 +37,14 @@
 #include <assert.h>
 #include <errno.h>
 #include <unistd.h>
-#include "dynamic-string.h"
+#include "lib/dynamic-string.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/vlog.h"
 #include "openflow/nicira-ext.h"
-#include "ofp.h"
-#include "ofpbuf.h"
 #include "openflow/openflow.h"
-#include "rconn.h"
-#include "timeval.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_status
 

@@ -1,5 +1,5 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
- * Copyright (c) 2012, CPqD, Brazil 
+ * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@
 #ifndef OFL_LOG_VLOG_H
 #define OFL_LOG_VLOG_H
 
-#include "vlog.h"
+#include "lib/vlog.h"
 
 #define VLOG_NAME(NAME) VLM_##NAME
 

@@ -48,22 +48,22 @@
 #include "oxm-match.h"
 
 #include <netinet/icmp6.h>
-#include "hmap.h"
-#include "hash.h"
-#include "ofp.h"
-#include "ofpbuf.h"
-#include "byte-order.h"
-#include "packets.h"
-#include "ofpbuf.h"
-#include "oflib/ofl-structs.h"
-#include "oflib/ofl-utils.h"
-#include "oflib/ofl-print.h"
-#include "unaligned.h"
-#include "byte-order.h"
-#include "../include/openflow/openflow.h"
+#include "lib/hmap.h"
+#include "lib/hash.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
+#include "lib/byte-order.h"
+#include "lib/packets.h"
+#include "lib/ofpbuf.h"
+#include "lib/unaligned.h"
+#include "lib/byte-order.h"
+#include "ofl-structs.h"
+#include "ofl-utils.h"
+#include "ofl-print.h"
+#include "openflow/openflow.h"
 
 #define LOG_MODULE VLM_oxm_match
-#include "vlog.h"
+#include "lib/vlog.h"
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 5);
 

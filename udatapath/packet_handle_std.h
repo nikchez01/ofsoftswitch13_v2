@@ -33,7 +33,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include "packets.h"
+#include "lib/packets.h"
 #include "match_std.h"
 #include "oflib/ofl-structs.h"
 

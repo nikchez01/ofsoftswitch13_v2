@@ -30,20 +30,21 @@
  */
 
 #include <sys/types.h>
-#include "compiler.h"
+#include "lib/compiler.h"
+#include "lib/hmap.h"
+#include "lib/list.h"
+#include "lib/util.h"
+#include "lib/vlog.h"
+
 #include "group_table.h"
 #include "datapath.h"
 #include "dp_actions.h"
 #include "dp_capabilities.h"
-#include "hmap.h"
-#include "list.h"
 #include "packet.h"
-#include "util.h"
 #include "openflow/openflow.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-messages.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_group_t
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);
@@ -332,13 +333,13 @@ group_table_create(struct datapath *dp) {
     table = xmalloc(sizeof(struct group_table));
     table->dp = dp;
 
-	table->features = (struct ofl_msg_multipart_reply_group_features*) xmalloc(sizeof(struct ofl_msg_multipart_reply_group_features));	
+	table->features = (struct ofl_msg_multipart_reply_group_features*) xmalloc(sizeof(struct ofl_msg_multipart_reply_group_features));
 	table->features->types = DP_SUPPORTED_GROUPS;
-	table->features->capabilities = DP_SUPPORTED_GROUP_CAPABILITIES;    
+	table->features->capabilities = DP_SUPPORTED_GROUP_CAPABILITIES;
 	for(i = 0; i < 4; i++){
 		table->features->max_groups[i] = 255;
 		table->features->actions[i] = DP_SUPPORTED_ACTIONS;
-	}	
+	}
     table->entries_num = 0;
     hmap_init(&table->entries);
     table->buckets_num = 0;

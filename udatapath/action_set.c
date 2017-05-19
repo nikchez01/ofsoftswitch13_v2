@@ -37,9 +37,9 @@
 #include "oflib/ofl-actions.h"
 #include "oflib/ofl-print.h"
 #include "packet.h"
-#include "list.h"
-#include "util.h"
-#include "vlog.h"
+#include "lib/list.h"
+#include "lib/util.h"
+#include "lib/vlog.h"
 
 #define LOG_MODULE VLM_action_set
 

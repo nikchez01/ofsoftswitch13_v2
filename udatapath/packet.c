@@ -32,15 +32,17 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/types.h>
+
+#include "lib/packets.h"
+#include "lib/util.h"
+#include "lib/ofpbuf.h"
+
 #include "datapath.h"
 #include "dp_buffers.h"
 #include "packet.h"
-#include "packets.h"
 #include "action_set.h"
-#include "ofpbuf.h"
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-print.h"
-#include "util.h"
 
 
 void

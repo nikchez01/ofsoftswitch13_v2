@@ -49,10 +49,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include "ofpbuf.h"
-#include "hmap.h"
-#include "packets.h"
-#include "../oflib/ofl-structs.h"
+#include "lib/ofpbuf.h"
+#include "lib/hmap.h"
+#include "lib/packets.h"
+#include "oflib/ofl-structs.h"
 
 #define OXM_HEADER__(VENDOR, FIELD, HASMASK, LENGTH) \
     (((VENDOR) << 16) | ((FIELD) << 9) | ((HASMASK) << 8) | (LENGTH))

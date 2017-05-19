@@ -39,11 +39,11 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include "command-line.h"
-#include "daemon.h"
-#include "timeval.h"
-#include "util.h"
-#include "vlog.h"
+#include "lib/command-line.h"
+#include "lib/daemon.h"
+#include "lib/timeval.h"
+#include "lib/util.h"
+#include "lib/vlog.h"
 
 /* -s, --signal: signal to send. */
 static int sig_nr = SIGTERM;

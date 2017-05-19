@@ -42,7 +42,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "ofpbuf.h"
+#include "lib/ofpbuf.h"
 
 
 /* Constant for representing "no buffer" */

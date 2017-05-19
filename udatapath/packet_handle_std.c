@@ -33,12 +33,13 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "lib/packets.h"
+#include "lib/compiler.h"
+
 #include "packet_handle_std.h"
 #include "packet.h"
-#include "packets.h"
 #include "oflib/ofl-structs.h"
 #include "openflow/openflow.h"
-#include "compiler.h"
 
 #include "lib/hash.h"
 #include "lib/util.h"
@@ -47,7 +48,7 @@
 #include "dp_capabilities.h"
 #include "oflib-exp/ofl-exp-beba.h"
 
-#include "../config.h"
+#include <config.h>
 
 
 int packet_parse(struct packet const *pkt, struct ofl_match *, struct protocols_std *proto);
@@ -572,7 +573,7 @@ packet_handle_std_destroy(struct packet_handle_std *handle) {
         	free(iter->value);
         	free(iter);
     	}
-    }	
+    }
 	handle->match.dirty = false;
     }
 

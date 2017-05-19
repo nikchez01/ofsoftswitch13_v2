@@ -1,11 +1,11 @@
+dist: trusty
 language: c
 compiler:
   - gcc
 
 install:
-  - "./boot.sh"
-
+  - mkdir debug
+  - cd debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug
 script:
-  - "./configure"
-  - "make"
-  - "sudo make install"
+  - make
