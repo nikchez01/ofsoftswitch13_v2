@@ -513,14 +513,15 @@ packet_handle_std_validate(struct packet_handle_std *handle) {
 void
 packet_handle_std_init(struct packet_handle_std *handle, struct packet *pkt)
 {
-	// FLAT
-	// handle->proto = xmalloc(sizeof(struct protocols_std));
+	memset(&handle->proto, 0, sizeof(handle->proto));
 
 	handle->pkt = pkt;
 
-	hmap_init(&handle->match.match_fields);
+	ofl_structs_match_init(&handle->match);
 
+	handle->table_miss = false;
 	handle->valid = false;
+
 	packet_handle_std_validate(handle);
 }
 

@@ -253,15 +253,10 @@ enum ofp_exp_msg_pkttmp_mod_commands {
 enum ofp_stats_extension_commands {
     OFPMP_EXP_STATE_STATS,      
     OFPMP_EXP_GLOBAL_STATE_STATS,
-    OFPMP_EXP_STATE_STATS_AND_DELETE
+    OFPMP_EXP_STATE_STATS_AND_DELETE,
+    OFPMP_EXP_STATE_STATS_SHORT,
+    OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT
 };
-
-struct ofp_exp_state_entry{
-    uint32_t            key_len;
-    uint8_t             key[OFPSC_MAX_KEY_LEN];
-    uint32_t            state;
-};
-OFP_ASSERT(sizeof(struct ofp_exp_state_entry) == 56);
 
 /* Body for ofp_multipart_request of type OFPMP_EXP_STATE_STATS. */
 struct ofp_exp_state_stats_request {
@@ -283,19 +278,27 @@ struct ofp_exp_state_stats_reply{
 
 struct ofp_exp_state_stats {
     uint16_t length;        /* Length of this entry. */
-    uint8_t table_id;       /* ID of table flow came from. */
-    uint8_t pad;
+    uint8_t  table_id;      /* ID of table flow came from. */
+    uint8_t  key_len;		/* Length of the flow key. */
     uint32_t duration_sec;  /* Time state entry has been alive in secs. */
     uint32_t duration_nsec; /* Time state entry has been alive in nsecs beyond duration_sec. */
-    uint32_t field_count;    /*number of extractor fields*/
-    uint32_t fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/ 
-    struct ofp_exp_state_entry entry;
     uint32_t hard_rollback;
     uint32_t idle_rollback;
     uint32_t hard_timeout; // [us]
     uint32_t idle_timeout; // [us]
+    uint32_t state;		   /* Flow state */
+    uint8_t  key[0];
 };
-OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 112);
+OFP_ASSERT(sizeof(struct ofp_exp_state_stats) == 32);
+
+struct ofp_exp_state_stats_short {
+    uint16_t length;        /* Length of this entry. */
+    uint8_t  table_id;      /* ID of table flow came from. */
+    uint8_t  key_len;		/* Length of the flow key. */
+    uint32_t state;		   /* Flow state */
+    uint8_t  key[0];
+};
+OFP_ASSERT(sizeof(struct ofp_exp_state_stats_short) == 8);
 
 /****************************************************************
  *

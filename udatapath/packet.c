@@ -103,6 +103,7 @@ packet_clone(struct packet *pkt) {
                                          // but this buffer is a copy of that,
                                          // and might be altered later
     clone->table_id         = pkt->table_id;
+    memcpy(&clone->ts, &pkt->ts, sizeof(struct timeval));
     clone->ownership        = true;
 
     packet_handle_std_init(&clone->handle_std, clone);

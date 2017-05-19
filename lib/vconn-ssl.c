@@ -587,7 +587,7 @@ again:
         struct ofp_header *oh = rx->data;
         size_t length = ntohs(oh->length);
         if (length < sizeof(struct ofp_header)) {
-            VLOG_ERR_RL(LOG_MODULE, &rl, "received too-short ofp_header (%zu bytes)",
+            VLOG_ERR_RL(LOG_MODULE, &rl, "SSL: received too-short ofp_header (%zu bytes)",
                         length);
             return EPROTO;
         }

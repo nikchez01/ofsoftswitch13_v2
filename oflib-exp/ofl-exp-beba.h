@@ -105,7 +105,7 @@ struct ofl_exp_del_pkttmp {
 * Multipart reply message: State entry statistics
 *************************/
 struct ofl_exp_state_entry{
-    uint32_t            key_len;
+    uint8_t             key_len;
     uint8_t             key[OFPSC_MAX_KEY_LEN];
     uint32_t            state;
 };
@@ -114,9 +114,6 @@ struct ofl_exp_state_stats {
     uint8_t                         table_id;      /* ID of table flow came from. */
     uint32_t                        duration_sec;  /* Time state entry has been alive in secs. */
     uint32_t                        duration_nsec; /* Time state entry has been alive in nsecs beyond duration_sec. */
-    //TODO Davide: we could avoid storing field_count and fields[] within each state entry (the controller already knows the lookup-scope!) 
-    uint32_t                        field_count;    /*number of extractor fields*/
-    uint32_t                        fields[OFPSC_MAX_FIELD_COUNT]; /*extractor fields*/
     uint32_t                        hard_rollback;
     uint32_t                        idle_rollback;
     uint32_t                        hard_timeout;  /* Number of seconds before expiration. */
@@ -377,7 +374,7 @@ handle_state_mod(struct pipeline *pl, struct ofl_exp_msg_state_mod *msg, const s
 
 /* Handles a state stats request. */
 ofl_err
-handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_state *reply);
+handle_stats_request_state(struct pipeline *pl, struct ofl_exp_msg_multipart_request_state *msg, const struct sender *sender, struct ofl_exp_msg_multipart_reply_state **replies, size_t *replies_num);
 
 /* Handles a global state stats request. */
 ofl_err
@@ -394,10 +391,19 @@ size_t
 ofl_structs_state_stats_pack(struct ofl_exp_state_stats const *src, uint8_t *dst, struct ofl_exp const *exp);
 
 size_t
+ofl_structs_state_stats_short_pack(struct ofl_exp_state_stats const *src, uint8_t *dst, struct ofl_exp const *exp);
+
+size_t
 ofl_structs_state_stats_ofp_total_len(struct ofl_exp_state_stats ** stats, size_t stats_num, struct ofl_exp const *exp);
 
 size_t
 ofl_structs_state_stats_ofp_len(struct ofl_exp_state_stats *stats, struct ofl_exp const *exp);
+
+size_t
+ofl_structs_state_stats_short_ofp_total_len(struct ofl_exp_state_stats ** stats, size_t stats_num, struct ofl_exp const *exp);
+
+size_t
+ofl_structs_state_stats_short_ofp_len(struct ofl_exp_state_stats *stats, struct ofl_exp const *exp);
 
 void
 ofl_structs_state_entry_print(FILE *stream, uint32_t field, uint8_t *key, uint8_t *offset);
@@ -408,11 +414,20 @@ ofl_structs_state_entry_print_default(FILE *stream, uint32_t field);
 void
 ofl_structs_state_stats_print(FILE *stream, struct ofl_exp_state_stats *s, struct ofl_exp const *exp);
 
+void
+ofl_structs_state_stats_short_print(FILE *stream, struct ofl_exp_state_stats *s, struct ofl_exp const *exp);
+
 ofl_err
 ofl_structs_state_stats_unpack(struct ofp_exp_state_stats const *src, uint8_t const *buf, size_t *len, struct ofl_exp_state_stats **dst, struct ofl_exp const *exp);
 
 ofl_err
+ofl_structs_state_stats_short_unpack(struct ofp_exp_state_stats_short const *src, uint8_t const *buf, size_t *len, struct ofl_exp_state_stats **dst, struct ofl_exp const *exp);
+
+ofl_err
 ofl_utils_count_ofp_state_stats(void *data, size_t data_len, size_t *count);
+
+ofl_err
+ofl_utils_count_ofp_state_stats_short(void *data, size_t data_len, size_t *count);
 
 /* instruction experimenter callback functions */
 int

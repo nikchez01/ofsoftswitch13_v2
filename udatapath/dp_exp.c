@@ -78,7 +78,6 @@ dp_exp_action(struct packet *pkt, struct ofl_action_experimenter *act) {
                         // This invocation occurs when a state transition happens due to a dynamic event (e.g., a newly received packet).
                         state_table_set_state(st, pkt, NULL, wns, &ntf_message);
                         #if BEBA_STATE_NOTIFICATIONS != 0
-                        memset(&ntf_message, 0, sizeof(struct ofl_exp_msg_notify_state_change));
                         if (ntf_message.old_state != ntf_message.new_state) {
                             int err = dp_send_message(pkt->dp, (struct ofl_msg_header *)&ntf_message, NULL);
                             if (err) {
@@ -226,26 +225,27 @@ dp_exp_stats(struct datapath *dp UNUSED, struct ofl_msg_multipart_request_experi
             struct ofl_exp_beba_msg_multipart_request *exp = (struct ofl_exp_beba_msg_multipart_request *)msg;
 
             switch(exp->type) {
+                case (OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT):
                 case (OFPMP_EXP_STATE_STATS_AND_DELETE):
+                case (OFPMP_EXP_STATE_STATS_SHORT):
                 case (OFPMP_EXP_STATE_STATS): {
-                    struct ofl_exp_msg_multipart_reply_state reply;
+                    struct ofl_exp_msg_multipart_reply_state *replies;
                     size_t i;
-                    err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &reply);
-                    dp_send_message(dp, (struct ofl_msg_header *)&reply, sender);
-                    if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE) {
-                        if (!((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state ||
-                                (((struct ofl_exp_msg_multipart_request_state *)msg)->get_from_state && ((struct ofl_exp_msg_multipart_request_state *)msg)->state == STATE_DEFAULT)){
-                            // stats_num - 1 because default state entry must not be freed
-                            for (i = 0; i < reply.stats_num - 1; i++) {
-                                free(reply.stats[i]);
-                            }
-                        } else {
-                            for (i = 0; i < reply.stats_num; i++) {
-                                free(reply.stats[i]);
+                    size_t j;
+                    size_t replies_num;
+                    err = handle_stats_request_state(dp->pipeline, (struct ofl_exp_msg_multipart_request_state *)msg, sender, &replies, &replies_num);
+                    for(j=0; j < replies_num; j++) {
+                        dp_send_message(dp, (struct ofl_msg_header *)&replies[j], sender);
+                        if (exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE || exp->type == OFPMP_EXP_STATE_STATS_AND_DELETE_SHORT) {
+                            for (i = 0; i < replies[j].stats_num; i++) {
+                                //DEFAULT state entries must not be removed
+                                if (replies[j].stats[i]->entry.key_len != 0)
+                                    free(replies[j].stats[i]);
                             }
                         }
                     }
-                    free(reply.stats);
+                    free(replies[0].stats);
+                    free(replies);
                     ofl_msg_free((struct ofl_msg_header *)msg, dp->exp);
                     return err;
                 }
