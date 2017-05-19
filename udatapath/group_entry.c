@@ -32,6 +32,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "lib/vlog.h"
+#include "lib/util.h"
 
 #include <stdbool.h>
 #include "flow_entry.h"
@@ -39,12 +41,10 @@
 #include "group_table.h"
 #include "dp_actions.h"
 #include "datapath.h"
-#include "util.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-utils.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_group_e
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

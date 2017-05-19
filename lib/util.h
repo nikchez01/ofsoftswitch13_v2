@@ -40,8 +40,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
-#include "compiler.h"
+
+#ifdef HAVE_BSD_STRING
+#include <bsd/string.h>
+#endif
+
+#include <lib/compiler.h>
 
 #ifndef va_copy
 #ifdef __va_copy
@@ -109,7 +113,7 @@ char *xasprintf(const char *format, ...) PRINTF_FORMAT(1, 2) MALLOC_LIKE;
 char *xvasprintf(const char *format, va_list) PRINTF_FORMAT(1, 0) MALLOC_LIKE;
 void *x2nrealloc(void *p, size_t *n, size_t s);
 
-#ifndef HAVE_STRLCPY
+#ifndef HAVE_BSD_STRING
 void strlcpy(char *dst, const char *src, size_t size);
 #endif
 

@@ -36,14 +36,14 @@
 #include <stdio.h>
 
 #include <netinet/icmp6.h>
-#include "../include/openflow/openflow.h"
+#include "openflow/openflow.h"
 #include "ofl.h"
 #include "ofl-actions.h"
 #include "ofl-packets.h"
-#include "compiler.h"
-#include "../lib/hmap.h"
-#include "../lib/hash.h"
+#include "lib/hmap.h"
+#include "lib/hash.h"
 
+#include <lib/compiler.h>
 
 struct ofl_exp;
 

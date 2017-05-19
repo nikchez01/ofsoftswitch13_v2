@@ -30,6 +30,12 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+
+#include "lib/packets.h"
+#include "lib/timeval.h"
+#include "lib/util.h"
+#include "lib/vlog.h"
+
 #include "datapath.h"
 #include "dp_actions.h"
 #include "flow_table.h"
@@ -42,11 +48,7 @@
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-actions.h"
 #include "oflib/ofl-utils.h"
-#include "packets.h"
-#include "timeval.h"
-#include "util.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_flow_e
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

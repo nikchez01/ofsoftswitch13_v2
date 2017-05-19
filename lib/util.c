@@ -39,6 +39,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_BSD_STRING
+#include <bsd/string.h>
+#endif
+
 const char *program_name;
 
 void
@@ -138,6 +142,7 @@ xasprintf(const char *format, ...)
     return s;
 }
 
+#ifndef HAVE_BSD_STRING
 void
 strlcpy(char *dst, const char *src, size_t size)
 {
@@ -148,6 +153,7 @@ strlcpy(char *dst, const char *src, size_t size)
         dst[n_copy] = '\0';
     }
 }
+#endif
 
 void
 ofp_fatal(int err_no, const char *format, ...)

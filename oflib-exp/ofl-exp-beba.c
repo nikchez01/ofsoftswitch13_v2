@@ -17,7 +17,7 @@
 #include "lib/hash.h"
 #include "lib/ofp.h"
 #include "lib/ofpbuf.h"
-#include "timeval.h"
+#include "lib/timeval.h"
 
 
 #define LOG_MODULE ofl_exp_os
@@ -2370,7 +2370,7 @@ state_table_stats(struct state_table *table, struct ofl_exp_msg_multipart_reques
             (*stats)[(*stats_num)]->entry.state = entry->state;
             memcpy((*stats)[(*stats_num)]->entry.key, entry->key, extractor->key_len);
             (*stats)[(*stats_num)]->entry.key_len = extractor->key_len;
-            
+
             (*stats_num)++;
 
             if (delete_entries){

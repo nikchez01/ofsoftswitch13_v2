@@ -30,19 +30,21 @@
  */
 
 #include <sys/types.h>
-#include "compiler.h"
+
+#include "lib/compiler.h"
+#include "lib/util.h"
+#include "lib/hmap.h"
+#include "lib/list.h"
+#include "lib/vlog.h"
+
 #include "meter_table.h"
 #include "datapath.h"
 #include "dp_actions.h"
-#include "hmap.h"
-#include "list.h"
 #include "packet.h"
-#include "util.h"
 #include "openflow/openflow.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-messages.h"
 
-#include "vlog.h"
 #define LOG_MODULE VLM_meter_t
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

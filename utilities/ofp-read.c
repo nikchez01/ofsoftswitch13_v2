@@ -33,8 +33,8 @@
 
 #include "oflib/ofl-messages.h"
 
-#include "timeval.h"
-#include "vlog.h"
+#include "lib/timeval.h"
+#include "lib/vlog.h"
 
 static size_t read_all(FILE *file, uint8_t **buf)
 {
@@ -50,7 +50,7 @@ static size_t read_all(FILE *file, uint8_t **buf)
 	fread(data, buf_len, 1, file);
 	if (ferror(file)) {
 		fprintf(stderr, "Cannot read msg file.\n");
-		return -1;		
+		return -1;
 	}
 	*buf = data;
 	return buf_len;

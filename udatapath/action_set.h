@@ -37,7 +37,7 @@
 #include "oflib/ofl.h"
 #include "oflib/ofl-actions.h"
 #include "oflib/ofl-structs.h"
-#include "list.h"
+#include "lib/list.h"
 
 struct datapath;
 struct packet;

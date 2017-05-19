@@ -37,19 +37,19 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <string.h>
-#include "flow.h"
-#include "mac-learning.h"
-#include "netdev.h"
-#include "ofp.h"
-#include "ofpbuf.h"
+#include "lib/flow.h"
+#include "lib/mac-learning.h"
+#include "lib/netdev.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
+#include "lib/packets.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/vlog.h"
 #include "openflow/openflow.h"
-#include "packets.h"
 #include "port-watcher.h"
-#include "rconn.h"
 #include "secchan.h"
 #include "status.h"
-#include "timeval.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_in_band
 

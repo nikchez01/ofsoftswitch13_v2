@@ -35,17 +35,17 @@
 #include "stp-secchan.h"
 #include <arpa/inet.h>
 #include <inttypes.h>
-#include "flow.h"
+#include "lib/flow.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
+#include "lib/rconn.h"
+#include "lib/poll-loop.h"
+#include "lib/stp.h"
+#include "lib/timeval.h"
+#include "lib/vlog.h"
 #include "secchan.h"
-#include "ofp.h"
-#include "ofpbuf.h"
 #include "openflow/openflow.h"
-#include "poll-loop.h"
 #include "port-watcher.h"
-#include "rconn.h"
-#include "stp.h"
-#include "timeval.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_stp_secchan
 

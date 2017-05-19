@@ -1,5 +1,5 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
- * Copyright (c) 2012, CPqD, Brazil 
+ * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,7 @@
 #include "oflib/ofl-messages.h"
 #include "oflib/ofl-structs.h"
 #include "pipeline.h"
-#include "timeval.h"
+#include "lib/timeval.h"
 #include "oflib-exp/ofl-exp-beba.h"
 
 
@@ -52,7 +52,7 @@ struct flow_table {
     bool                       disabled;      /* Don't use that table. */
     struct ofl_table_features *features;      /*store table features*/
     struct ofl_table_stats    *stats;         /* structure storing table statistics. */
-    
+
     struct list               match_entries;  /* list of entries in order. */
     struct list               hard_entries;   /* list of entries with hard timeout;
                                                 ordered by their timeout times. */
@@ -63,7 +63,7 @@ struct flow_table {
 
 extern uint32_t oxm_ids[];
 
-extern uint32_t wildcarded[]; 
+extern uint32_t wildcarded[];
 
 extern struct ofl_instruction_header instructions[];
 
@@ -89,7 +89,7 @@ void
 flow_table_destroy(struct flow_table *table);
 
 /* Destroys flow table properties */
-void 
+void
 flow_table_destroy_property(struct ofl_table_feature_prop_header *prop, enum ofp_table_feature_prop_type type);
 
 /* Collects statistics of the flow entries of the table. */

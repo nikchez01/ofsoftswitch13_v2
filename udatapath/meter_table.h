@@ -33,8 +33,8 @@
 #define METER_TABLE_H 1
 
 #include <stdbool.h>
-#include "hmap.h"
-#include "list.h"
+#include "lib/hmap.h"
+#include "lib/list.h"
 #include "packet.h"
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-messages.h"
@@ -53,7 +53,7 @@
 /* Meter table */
 struct meter_table {
   struct datapath		*dp;				/* The datapath */
-	struct ofl_meter_features *features;	
+	struct ofl_meter_features *features;
 	size_t				 entries_num;		/* The number of meters */
   struct hmap			meter_entries;	    /* Meter entries */
 	size_t              bands_num;
@@ -97,9 +97,9 @@ meter_table_handle_stats_request_meter_conf(struct meter_table *table,
 ofl_err
 meter_table_handle_features_request(struct meter_table *table,
                                    struct ofl_msg_multipart_request_header *msg UNUSED,
-                                  const struct sender *sender); 
+                                  const struct sender *sender);
 
-void 
+void
 meter_table_add_tokens(struct meter_table *table);
 
 

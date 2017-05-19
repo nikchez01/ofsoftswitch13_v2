@@ -38,19 +38,19 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "command-line.h"
-#include "daemon.h"
-#include "dhcp-client.h"
-#include "dhcp.h"
-#include "dirs.h"
-#include "dynamic-string.h"
-#include "fatal-signal.h"
-#include "netdev.h"
-#include "poll-loop.h"
-#include "timeval.h"
-#include "util.h"
-#include "vlog-socket.h"
-#include "vlog.h"
+#include "lib/command-line.h"
+#include "lib/daemon.h"
+#include "lib/dhcp-client.h"
+#include "lib/dhcp.h"
+#include "lib/dirs.h"
+#include "lib/dynamic-string.h"
+#include "lib/fatal-signal.h"
+#include "lib/netdev.h"
+#include "lib/poll-loop.h"
+#include "lib/timeval.h"
+#include "lib/util.h"
+#include "lib/vlog-socket.h"
+#include "lib/vlog.h"
 
 #define LOG_MODULE VLM_ofp_discover
 

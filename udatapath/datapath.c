@@ -44,11 +44,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "csum.h"
+#include "lib/csum.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
 #include "dp_buffers.h"
 #include "dp_control.h"
-#include "ofp.h"
-#include "ofpbuf.h"
 #include "group_table.h"
 #include "meter_table.h"
 #include "oflib/ofl.h"
@@ -64,10 +64,10 @@
 #include "openflow/private-ext.h"
 #include "openflow/openflow-ext.h"
 #include "pipeline.h"
-#include "poll-loop.h"
-#include "rconn.h"
-#include "stp.h"
-#include "vconn.h"
+#include "lib/poll-loop.h"
+#include "lib/rconn.h"
+#include "lib/stp.h"
+#include "lib/vconn.h"
 #define LOG_MODULE VLM_dp
 
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(60, 60);

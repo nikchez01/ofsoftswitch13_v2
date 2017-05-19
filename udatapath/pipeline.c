@@ -32,8 +32,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "lib/compiler.h"
+#include "lib/util.h"
+#include "lib/hash.h"
+#include "lib/vlog.h"
+
 #include "action_set.h"
-#include "compiler.h"
 #include "dp_actions.h"
 #include "dp_buffers.h"
 #include "dp_exp.h"
@@ -46,10 +50,7 @@
 #include "meter_table.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-structs.h"
-#include "util.h"
-#include "hash.h"
 #include "oflib/oxm-match.h"
-#include "vlog.h"
 #include "dp_capabilities.h"
 #include "oflib-exp/ofl-exp-beba.h"
 
@@ -346,7 +347,7 @@ pipeline_handle_flow_mod(struct pipeline *pl, struct ofl_msg_flow_mod *msg,
                 VLOG_WARN_RL(LOG_MODULE, &rl, "The buffer flow_mod referred to was empty (%u).", msg->buffer_id);
             }
         }
-        
+
         send_flow_notification(pl->dp, msg, sender);
         ofl_msg_free_flow_mod(msg, !match_kept, !insts_kept, pl->dp->exp);
         return 0;

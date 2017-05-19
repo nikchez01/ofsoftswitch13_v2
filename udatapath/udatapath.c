@@ -52,26 +52,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "command-line.h"
-#include "daemon.h"
+#include "lib/command-line.h"
+#include "lib/daemon.h"
+#include "lib/poll-loop.h"
+#include "lib/queue.h"
+#include "lib/util.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/vconn.h"
+#include "lib/dirs.h"
+#include "lib/vconn-ssl.h"
+#include "lib/vlog-socket.h"
+
 #include "datapath.h"
 #include "openflow/openflow.h"
-#include "poll-loop.h"
-#include "queue.h"
-#include "util.h"
-#include "rconn.h"
-#include "timeval.h"
-#include "vconn.h"
-#include "dirs.h"
-#include "vconn-ssl.h"
-#include "vlog-socket.h"
 
 #if defined(OF_HW_PLAT)
 #include <openflow/of_hw_api.h>
 #endif
 
 #define LOG_MODULE VLM_udatapath
-#include "vlog.h"
+#include "lib/vlog.h"
 
 extern struct datapath *dp_ref;
 

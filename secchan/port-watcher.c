@@ -37,19 +37,19 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stdlib.h>
-#include "dynamic-string.h"
-#include "netdev.h"
-#include "ofp.h"
-#include "ofpbuf.h"
+#include "lib/dynamic-string.h"
+#include "lib/netdev.h"
+#include "lib/ofp.h"
+#include "lib/ofpbuf.h"
+#include "lib/poll-loop.h"
+#include "lib/port-array.h"
+#include "lib/rconn.h"
+#include "lib/shash.h"
+#include "lib/svec.h"
+#include "lib/timeval.h"
+#include "lib/xtoxll.h"
+#include "lib/vlog.h"
 #include "openflow/openflow.h"
-#include "poll-loop.h"
-#include "port-array.h"
-#include "rconn.h"
-#include "shash.h"
-#include "svec.h"
-#include "timeval.h"
-#include "xtoxll.h"
-#include "vlog.h"
 
 #define LOG_MODULE VLM_port_watcher
 

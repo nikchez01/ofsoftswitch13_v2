@@ -40,8 +40,8 @@
 #ifndef DP_PORTS_H
 #define DP_PORTS_H 1
 
-#include "list.h"
-#include "netdev.h"
+#include "lib/list.h"
+#include "lib/netdev.h"
 #include "dp_exp.h"
 #include "oflib/ofl.h"
 #include "oflib/ofl-structs.h"

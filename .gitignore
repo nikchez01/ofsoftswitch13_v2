@@ -133,4 +133,3 @@ cscope.files
 .tags
 .idea/
 cmake-build-debug/
-CMakeLists.txt

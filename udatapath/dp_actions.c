@@ -32,7 +32,10 @@
  */
 
 #include <netinet/in.h>
-#include "csum.h"
+#include "lib/csum.h"
+#include "lib/packets.h"
+#include "lib/util.h"
+#include "lib/hash.h"
 #include "dp_exp.h"
 #include "dp_actions.h"
 #include "dp_buffers.h"
@@ -41,12 +44,9 @@
 #include "oflib/ofl-actions.h"
 #include "oflib/ofl-log.h"
 #include "packet.h"
-#include "packets.h"
 #include "pipeline.h"
 #include "crc32.h"
-#include "util.h"
 #include "oflib/oxm-match.h"
-#include "hash.h"
 
 #define LOG_MODULE VLM_dp_acts
 

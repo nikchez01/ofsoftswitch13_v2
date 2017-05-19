@@ -36,7 +36,7 @@
 #include "match_std.h"
 
 
-#include "vlog.h"
+#include "lib/vlog.h"
 #define LOG_MODULE VLM_flow_e
 
 /* Returns true if two 8 bit values match */
@@ -70,7 +70,7 @@ match_mask16(uint8_t *a, uint8_t *am, uint8_t *b) {
 
 /* Returns true if two 24 bit values match */
 static inline bool
-match_24(uint8_t *a, uint8_t *b) {     
+match_24(uint8_t *a, uint8_t *b) {
      return (match_16(a, b) &&
              match_8(a+2, b+2));
 }
@@ -159,7 +159,7 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
 
     if (flow_match->header.length == 0)
         return true;
-    
+
     /* Loop over the flow entry's match fields */
     HMAP_FOR_EACH(f, struct ofl_match_tlv, hmap_node, &flow_match->match_fields)
     {
@@ -192,7 +192,7 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
             default:
                 break;
         }
-        
+
         /* Lookup the packet header */
         packet_f = oxm_match_lookup(packet_header, packet);
         if (!packet_f) {
@@ -229,7 +229,7 @@ packet_match(struct ofl_match *flow_match, struct ofl_match *packet, struct ofl_
                 }
                 else {
                     if (!match_8(flow_val, packet_val))
-                        return false;                    
+                        return false;
                 }
                 break;
             case 2:
@@ -441,7 +441,7 @@ match_std_strict(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp) 
         flow_entry_val = flow_entry_match->value;
         switch (OXM_VENDOR(flow_mod_match->header))
         {
-            case (OFPXMC_OPENFLOW_BASIC):         
+            case (OFPXMC_OPENFLOW_BASIC):
                 field_len =  OXM_LENGTH(flow_mod_match->header);
                 if (has_mask)
                     {
@@ -460,7 +460,7 @@ match_std_strict(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp) 
             default:
                 break;
         }
-        
+
         switch (field_len) {
             case 1:
                 if (has_mask) {
@@ -491,7 +491,7 @@ match_std_strict(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp) 
                     if (!strict_mask24(flow_mod_val, flow_entry_val, flow_mod_mask, flow_entry_mask))
                         return false;
                 }
-                else {                    
+                else {
                     if (!match_24(flow_mod_val, flow_entry_val)){
                         return false;
                     }
@@ -499,7 +499,7 @@ match_std_strict(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp) 
                 break;
             case 4:
                 if (has_mask) {
-                    /* Quick and dirty fix for IP addresses matching 
+                    /* Quick and dirty fix for IP addresses matching
                        TODO: Matching needs a huge refactoring  */
                     if (oxm_field == OFPXMT_OFB_IPV4_SRC ||
                         oxm_field == OFPXMT_OFB_IPV4_DST ||
@@ -834,11 +834,11 @@ match_std_overlap(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp)
     HMAP_FOR_EACH(f_a, struct ofl_match_tlv, hmap_node, &a->match_fields)
     {
         val_a = f_a->value;
-        
+
         switch (OXM_VENDOR(f_a->header))
         {
             case (OFPXMC_OPENFLOW_BASIC):
-                field_len = OXM_LENGTH(f_a->header); 
+                field_len = OXM_LENGTH(f_a->header);
                 if (OXM_HASMASK(f_a->header)) {
                     field_len /= 2;
                     header = (f_a->header & 0xfffffe00) | field_len;
@@ -877,7 +877,7 @@ match_std_overlap(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp)
                         } else {
                             /* Set a dummy mask with all bits set to 0 (valid) */
                             mask_b = (uint8_t *) all_mask;
-                        }                     
+                        }
                         break;
                     case (OFPXMC_EXPERIMENTER):
                         if (exp == NULL || exp->field == NULL || exp->field->overlap_b == NULL) {
@@ -888,7 +888,7 @@ match_std_overlap(struct ofl_match *a, struct ofl_match *b, struct ofl_exp *exp)
                         break;
                     default:
                         break;
-                } /*switch class*/            
+                } /*switch class*/
 
             switch (field_len) {
                 case 1:

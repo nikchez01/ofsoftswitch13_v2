@@ -35,15 +35,15 @@
 #include "ratelimit.h"
 #include <arpa/inet.h>
 #include <stdlib.h>
-#include "ofpbuf.h"
+#include "lib/ofpbuf.h"
+#include "lib/poll-loop.h"
 #include "openflow/openflow.h"
-#include "poll-loop.h"
-#include "queue.h"
-#include "rconn.h"
+#include "lib/queue.h"
+#include "lib/rconn.h"
+#include "lib/timeval.h"
+#include "lib/vconn.h"
 #include "secchan.h"
 #include "status.h"
-#include "timeval.h"
-#include "vconn.h"
 
 struct rate_limiter {
     const struct settings *s;

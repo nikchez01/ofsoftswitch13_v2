@@ -1,5 +1,5 @@
 /* Copyright (c) 2011, TrafficLab, Ericsson Research, Hungary
- * Copyright (c) 2012, CPqD, Brazil 
+ * Copyright (c) 2012, CPqD, Brazil
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,11 +34,11 @@
 
 #include <stdbool.h>
 #include <sys/types.h>
+#include "lib/list.h"
+#include "lib/timeval.h"
 #include "datapath.h"
-#include "list.h"
 #include "oflib/ofl-structs.h"
 #include "oflib/ofl-messages.h"
-#include "timeval.h"
 
 /****************************************************************************
  * Implementation of a flow table entry.
@@ -62,7 +62,7 @@ struct flow_entry {
     bool                     send_removed; /* true if a flow removed should be sent
                                               when removing a flow. */
 
-    bool                     no_pkt_count; /* true if doesn't keep track of flow matched packets*/     
+    bool                     no_pkt_count; /* true if doesn't keep track of flow matched packets*/
     bool                     no_byt_count; /* true if doesn't keep track of flow matched bytes*/
     struct list              group_refs;  /* list of groups referencing the flow. */
     struct list              meter_refs;  /* list of meters referencing the flow. */

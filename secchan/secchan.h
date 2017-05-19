@@ -37,8 +37,8 @@
 #include <regex.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "list.h"
-#include "packets.h"
+#include "lib/list.h"
+#include "lib/packets.h"
 
 struct secchan;
 
