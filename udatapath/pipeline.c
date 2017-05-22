@@ -53,6 +53,7 @@
 #include "oflib/oxm-match.h"
 #include "dp_capabilities.h"
 #include "oflib-exp/ofl-exp-beba.h"
+#include "../oflib/ofl-structs.h"
 
 #define LOG_MODULE VLM_pipeline
 
@@ -88,7 +89,7 @@ static void
 send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table_id, uint8_t reason) {
 
     struct ofl_msg_packet_in msg;
-    struct ofl_match *m;
+    struct ofl_match m;
     msg.header.type = OFPT_PACKET_IN;
     msg.total_len   = pkt->buffer->size;
     msg.reason      = reason;
@@ -108,17 +109,15 @@ send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table
         msg.data_length = pkt->buffer->size;
     }
 
-    //TODO avoid malloc
-    m = (struct ofl_match *) malloc(sizeof(struct ofl_match));
-    ofl_structs_match_init(m);
-    copy_oxm_packet_info_into_ofl_match(m, &pkt->handle_std.info);
+    ofl_structs_match_init(&m);
+    copy_oxm_packet_info_into_ofl_match(&m, &pkt->handle_std.info);
     /* In this implementation the fields in_port and in_phy_port
         always will be the same, because we are not considering logical
         ports                                 */
-    msg.match = (struct ofl_match_header*)m;
+    msg.match = (struct ofl_match_header*)&m;
     dp_send_message(pl->dp, (struct ofl_msg_header *)&msg, NULL);
 
-    ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
+    ofl_structs_free_oxm_match((struct ofl_match_header* ) &m, NULL);
 }
 
 /* Pass the packet through the flow tables.
@@ -179,16 +178,14 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         /* BEBA EXTENSION END */
 
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
-            //TODO avoid malloc
-            struct ofl_match * m;
             char *s;
-            m = (struct ofl_match *) malloc(sizeof(struct ofl_match));
-            ofl_structs_match_init(m);
-            copy_oxm_packet_info_into_ofl_match(m, &pkt->handle_std.info);
-            s = ofl_structs_match_to_string((struct ofl_match_header *) m, pkt->dp->exp);
+            struct ofl_match m;
+            ofl_structs_match_init(&m);
+            copy_oxm_packet_info_into_ofl_match(&m, &pkt->handle_std.info);
+            s = ofl_structs_match_to_string((struct ofl_match_header *) &m, pkt->dp->exp);
             VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.", table->stats->table_id, s);
             free(s);
-            ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
+            ofl_structs_free_oxm_match((struct ofl_match_header* ) &m, NULL);
         }
 
         entry = flow_table_lookup(table, pkt, pkt->dp->exp);

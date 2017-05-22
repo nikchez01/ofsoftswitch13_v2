@@ -740,6 +740,9 @@ void
 ofl_structs_free_match(struct ofl_match_header *match, struct ofl_exp const *exp);
 
 void
+ofl_structs_free_oxm_match(struct ofl_match_header *match, struct ofl_exp const *exp);
+
+void
 ofl_structs_free_meter_band_stats(struct ofl_meter_band_stats* s);
 
 void
