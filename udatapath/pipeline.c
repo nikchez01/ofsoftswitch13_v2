@@ -88,7 +88,7 @@ static void
 send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table_id, uint8_t reason) {
 
     struct ofl_msg_packet_in msg;
-    // struct ofl_match *m;
+    struct ofl_match *m;
     msg.header.type = OFPT_PACKET_IN;
     msg.total_len   = pkt->buffer->size;
     msg.reason      = reason;
@@ -108,16 +108,17 @@ send_packet_to_controller(struct pipeline *pl, struct packet *pkt, uint8_t table
         msg.data_length = pkt->buffer->size;
     }
 
-    // OXM_TODO
+    //TODO avoid malloc
+    m = (struct ofl_match *) malloc(sizeof(struct ofl_match));
+    ofl_structs_match_init(m);
+    copy_oxm_packet_info_into_ofl_match(m, &pkt->handle_std.info);
+    /* In this implementation the fields in_port and in_phy_port
+        always will be the same, because we are not considering logical
+        ports                                 */
+    msg.match = (struct ofl_match_header*)m;
+    dp_send_message(pl->dp, (struct ofl_msg_header *)&msg, NULL);
 
-    // m = &pkt->handle_std.pkt_match;
-    // /* In this implementation the fields in_port and in_phy_port
-    //     always will be the same, because we are not considering logical
-    //     ports                                 */
-    // msg.match = (struct ofl_match_header*)m;
-    // dp_send_message(pl->dp, (struct ofl_msg_header *)&msg, NULL);
-
-    // ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
+    ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
 }
 
 /* Pass the packet through the flow tables.
@@ -178,10 +179,16 @@ pipeline_process_packet(struct pipeline *pl, struct packet *pkt)
         /* BEBA EXTENSION END */
 
         if (VLOG_IS_DBG_ENABLED(LOG_MODULE)) {
-            // OXM_TODO
-            // char *m = ofl_structs_match_to_string((struct ofl_match_header *) &(pkt->handle_std.pkt_match), pkt->dp->exp);
-            // VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.", table->stats->table_id, m);
-            // free(m);
+            //TODO avoid malloc
+            struct ofl_match * m;
+            char *s;
+            m = (struct ofl_match *) malloc(sizeof(struct ofl_match));
+            ofl_structs_match_init(m);
+            copy_oxm_packet_info_into_ofl_match(m, &pkt->handle_std.info);
+            s = ofl_structs_match_to_string((struct ofl_match_header *) m, pkt->dp->exp);
+            VLOG_DBG_RL(LOG_MODULE, &rl, "searching table entry in table %d for packet match: %s.", table->stats->table_id, s);
+            free(s);
+            ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
         }
 
         entry = flow_table_lookup(table, pkt, pkt->dp->exp);
@@ -715,14 +722,6 @@ execute_entry(struct pipeline *pl, struct flow_entry *entry,
                     *metadata = (*metadata & ~wi->metadata_mask) | (wi->metadata & wi->metadata_mask);
                     VLOG_DBG_RL(LOG_MODULE, &rl, "Executing write metadata: %"PRIx64"", *metadata);
 		}
-
-		// OXM_TODO
-                // HMAP_FOR_EACH_WITH_HASH(f, struct ofl_match_tlv,
-                //     hmap_node, hash_int(OXM_OF_METADATA,0), &(*pkt)->handle_std.pkt_match.match_fields){
-                //     uint64_t *metadata = (uint64_t*) f->value;
-                //     *metadata = (*metadata & ~wi->metadata_mask) | (wi->metadata & wi->metadata_mask);
-                //     VLOG_DBG_RL(LOG_MODULE, &rl, "Executing write metadata: %"PRIx64"", *metadata);
-                // }
                 break;
             }
             case OFPIT_WRITE_ACTIONS: {

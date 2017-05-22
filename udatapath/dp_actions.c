@@ -1093,6 +1093,7 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
         }
         case (OFPP_CONTROLLER): {
             struct ofl_msg_packet_in msg;
+            struct ofl_match *m;
             msg.header.type = OFPT_PACKET_IN;
             msg.total_len   = pkt->buffer->size;
             msg.reason = pkt->handle_std.table_miss? OFPR_NO_MATCH:OFPR_ACTION;
@@ -1116,11 +1117,13 @@ dp_actions_output_port(struct packet *pkt, uint32_t out_port, uint32_t out_queue
                 always will be the same, because we are not considering logical
                 ports*/
 
-            exit(42);
-
-            // OXM_TODO
-            // msg.match = (struct ofl_match_header*) &pkt->handle_std.pkt_match;
-            // dp_send_message(pkt->dp, (struct ofl_msg_header *)&msg, NULL);
+            //TODO avoid malloc
+            m = (struct ofl_match *) malloc(sizeof(struct ofl_match));
+            ofl_structs_match_init(m);
+            copy_oxm_packet_info_into_ofl_match(m, &pkt->handle_std.info);
+            msg.match = (struct ofl_match_header*)m;
+            dp_send_message(pkt->dp, (struct ofl_msg_header *)&msg, NULL);
+            ofl_structs_free_match((struct ofl_match_header* ) m, NULL);
             break;
         }
         case (OFPP_FLOOD):

@@ -1106,4 +1106,130 @@ oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *lengt
 	}
 }
 
-
+void *
+copy_oxm_packet_info_into_ofl_match(struct ofl_match *match, struct oxm_packet_info *info)
+{
+    if (oxm_has_valid(info, in_port)) {
+        ofl_structs_match_put32(match, OXM_OF_IN_PORT, info->in_port);
+    }
+    if (oxm_has_valid(info, metadata)) {
+        ofl_structs_match_put64(match, OXM_OF_METADATA, info->metadata);
+    }
+    if (oxm_has_valid(info, tunnel_id)) {
+        ofl_structs_match_put64(match, OXM_OF_TUNNEL_ID, info->tunnel_id);
+    }
+    if (oxm_has_valid(info, state)) {
+        ofl_structs_match_exp_put32(match, OXM_EXP_STATE, 0xBEBABEBA, info->state);
+    }
+    if (oxm_has_valid(info, global_state)) {
+        ofl_structs_match_exp_put32(match, OXM_EXP_GLOBAL_STATE, 0xBEBABEBA, info->global_state);
+    }
+    if (oxm_has_valid(info, eth_type)) {
+        ofl_structs_match_put16(match, OXM_OF_ETH_TYPE, info->eth_type);
+    }
+    if (oxm_has_valid(info, eth_src)) {
+        ofl_structs_match_put_eth(match, OXM_OF_ETH_SRC, (uint8_t*) info->eth_src);
+    }
+    if (oxm_has_valid(info, eth_dst)) {
+        ofl_structs_match_put_eth(match, OXM_OF_ETH_DST, (uint8_t*) info->eth_dst);
+    }
+    if (oxm_has_valid(info, vlan_id)) {
+        ofl_structs_match_put16(match, OXM_OF_VLAN_VID, info->vlan_id);
+    }
+    if (oxm_has_valid(info, vlan_pcp)) {
+        ofl_structs_match_put8(match, OXM_OF_VLAN_PCP, info->vlan_pcp);
+    }
+    if (oxm_has_valid(info, pbb_isid)) {
+        ofl_structs_match_put_pbb_isid(match, OXM_OF_PBB_ISID, info->pbb_isid);
+    }
+    if (oxm_has_valid(info, mpls_label)) {
+        ofl_structs_match_put32(match, OXM_OF_MPLS_LABEL, info->mpls_label);
+    }
+    if (oxm_has_valid(info, mpls_tc)) {
+        ofl_structs_match_put8(match, OXM_OF_MPLS_TC, info->mpls_tc);
+    }
+    if (oxm_has_valid(info, mpls_bos)) {
+        ofl_structs_match_put8(match, OXM_OF_MPLS_BOS, info->mpls_bos);
+    }
+    if (oxm_has_valid(info, arp_ar_op)) {
+        ofl_structs_match_put16(match, OXM_OF_ARP_OP, info->arp_ar_op);
+    }
+    if (oxm_has_valid(info, arp_ar_sha)) {
+        ofl_structs_match_put_eth(match, OXM_OF_ARP_SHA, info->arp_ar_sha);
+    }
+    if (oxm_has_valid(info, arp_ar_tha)) {
+        ofl_structs_match_put_eth(match, OXM_OF_ARP_THA, info->arp_ar_tha);
+    }
+    if (oxm_has_valid(info, arp_ar_spa)) {
+        ofl_structs_match_put32(match, OXM_OF_ARP_SPA, info->arp_ar_spa);
+    }
+    if (oxm_has_valid(info, arp_ar_tpa)) {
+        ofl_structs_match_put32(match, OXM_OF_ARP_TPA, info->arp_ar_tpa);
+    }
+    if (oxm_has_valid(info, ip_src)) {
+        ofl_structs_match_put32(match, OXM_OF_IPV4_SRC, info->ip_src);
+    }
+    if (oxm_has_valid(info, ip_dst)) {
+        ofl_structs_match_put32(match, OXM_OF_IPV4_DST, info->ip_dst);
+    }
+    if (oxm_has_valid(info, ip_ecn)) {
+        ofl_structs_match_put8(match, OXM_OF_IP_ECN, info->ip_ecn);
+    }
+    if (oxm_has_valid(info, ip_proto)) {
+        ofl_structs_match_put8(match, OXM_OF_IP_PROTO, info->ip_proto);
+    }
+    if (oxm_has_valid(info, ip_dscp)) {
+        ofl_structs_match_put8(match, OXM_OF_IP_DSCP, info->ip_dscp);
+    }
+    if (oxm_has_valid(info, ipv6_src)) {
+        ofl_structs_match_put_ipv6(match, OXM_OF_IPV6_SRC, info->ipv6_src);
+    }
+    if (oxm_has_valid(info, ipv6_dst)) {
+        ofl_structs_match_put_ipv6(match, OXM_OF_IPV6_DST, info->ipv6_dst);
+    }
+    if (oxm_has_valid(info, ipv6_fl)) {
+        ofl_structs_match_put32(match, OXM_OF_IPV6_FLABEL, info->ipv6_fl);
+    }
+    if (oxm_has_valid(info, ipv6_nd_target)) {
+        ofl_structs_match_put_ipv6(match, OXM_OF_IPV6_ND_TARGET, info->ipv6_nd_target);
+    }
+    if (oxm_has_valid(info, ipv6_nd_sll)) {
+        ofl_structs_match_put_eth(match, OXM_OF_IPV6_ND_SLL, info->ipv6_nd_sll);
+    }
+    if (oxm_has_valid(info, ipv6_nd_tll)) {
+        ofl_structs_match_put_eth(match, OXM_OF_IPV6_ND_TLL, info->ipv6_nd_tll);
+    }
+    if (oxm_has_valid(info, tcp_src)) {
+        ofl_structs_match_put16(match, OXM_OF_TCP_SRC, info->tcp_src);
+    }
+    if (oxm_has_valid(info, tcp_dst)) {
+        ofl_structs_match_put16(match, OXM_OF_TCP_DST, info->tcp_dst);
+    }
+    if (oxm_has_valid(info, tcp_flags)) {
+        ofl_structs_match_put16(match, OXM_OF_TCP_FLAGS, info->tcp_flags);
+    }
+    if (oxm_has_valid(info, udp_src)) {
+        ofl_structs_match_put16(match, OXM_OF_UDP_SRC, info->udp_src);
+    }
+    if (oxm_has_valid(info, udp_dst)) {
+        ofl_structs_match_put16(match, OXM_OF_UDP_DST, info->udp_dst);
+    }
+    if (oxm_has_valid(info, sctp_src)) {
+        ofl_structs_match_put16(match, OXM_OF_SCTP_SRC, info->sctp_src);
+    }
+    if (oxm_has_valid(info, sctp_dst)) {
+        ofl_structs_match_put16(match, OXM_OF_SCTP_DST, info->sctp_dst);
+    }
+    if (oxm_has_valid(info, icmp_type)) {
+        ofl_structs_match_put8(match, OXM_OF_ICMPV4_TYPE, info->icmp_type);
+    }
+    if (oxm_has_valid(info, icmp_code)) {
+        ofl_structs_match_put8(match, OXM_OF_ICMPV4_CODE, info->icmp_code);
+    }
+    if (oxm_has_valid(info, icmp6_type)) {
+        ofl_structs_match_put8(match, OXM_OF_ICMPV6_TYPE, info->icmp6_type);
+    }
+    if (oxm_has_valid(info, icmp6_code)) {
+        ofl_structs_match_put8(match, OXM_OF_ICMPV6_CODE, info->icmp6_code);
+    }
+}

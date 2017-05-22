@@ -507,4 +507,7 @@ oxm_field_bits(uint32_t header);
 void *
 oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *length);
 
+void *
+copy_oxm_packet_info_into_ofl_match(struct ofl_match *match, struct oxm_packet_info *info);
+
 #endif /* nx-match.h */
