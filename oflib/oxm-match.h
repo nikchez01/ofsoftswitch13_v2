@@ -453,8 +453,8 @@ struct oxm_packet_info {
 	uint16_t	vlan_id;
 	uint8_t		vlan_pcp;
 
-	uint64_t	arp_ar_sha;
-	uint64_t	arp_ar_tha;
+	uint8_t		arp_ar_sha[ETH_ADDR_LEN];
+	uint8_t		arp_ar_tha[ETH_ADDR_LEN];
 	uint32_t	arp_ar_spa;
 	uint32_t	arp_ar_tpa;
 	uint16_t	arp_ar_op;

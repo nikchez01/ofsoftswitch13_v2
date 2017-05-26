@@ -1155,10 +1155,10 @@ copy_oxm_packet_info_into_ofl_match(struct ofl_match *match, struct oxm_packet_i
         ofl_structs_match_put16(match, OXM_OF_ARP_OP, info->arp_ar_op);
     }
     if (oxm_has_valid(info, arp_ar_sha)) {
-        ofl_structs_match_put_eth(match, OXM_OF_ARP_SHA, info->arp_ar_sha);
+        ofl_structs_match_put_eth(match, OXM_OF_ARP_SHA, (uint8_t*) info->arp_ar_sha);
     }
     if (oxm_has_valid(info, arp_ar_tha)) {
-        ofl_structs_match_put_eth(match, OXM_OF_ARP_THA, info->arp_ar_tha);
+        ofl_structs_match_put_eth(match, OXM_OF_ARP_THA, (uint8_t*) info->arp_ar_tha);
     }
     if (oxm_has_valid(info, arp_ar_spa)) {
         ofl_structs_match_put32(match, OXM_OF_ARP_SPA, info->arp_ar_spa);

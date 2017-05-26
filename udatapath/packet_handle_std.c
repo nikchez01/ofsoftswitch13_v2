@@ -276,11 +276,11 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 if (ntohs(proto->arp->ar_op) == ARP_OP_REQUEST ||
                     ntohs(proto->arp->ar_op) == ARP_OP_REPLY) {
 
-		    memcpy(&info->arp_ar_sha, proto->arp->ar_sha, ETH_ADDR_LEN);
-		    oxm_set_valid(info, arp_ar_sha);
+                memcpy(info->arp_ar_sha, proto->arp->ar_sha, ETH_ADDR_LEN);
+                oxm_set_valid(info, arp_ar_sha);
 
-		    memcpy(&info->arp_ar_tha, proto->arp->ar_tha, ETH_ADDR_LEN);
-		    oxm_set_valid(info, arp_ar_tha);
+                memcpy(info->arp_ar_tha, proto->arp->ar_tha, ETH_ADDR_LEN);
+                oxm_set_valid(info, arp_ar_tha);
 
 		    oxm_set_info(info, arp_ar_spa, proto->arp->ar_spa);
 		    oxm_set_info(info, arp_ar_tpa, proto->arp->ar_tpa);
