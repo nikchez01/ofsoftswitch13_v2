@@ -453,8 +453,8 @@ struct oxm_packet_info {
 	uint16_t	vlan_id;
 	uint8_t		vlan_pcp;
 
-	uint64_t	arp_ar_sha;
-	uint64_t	arp_ar_tha;
+	uint8_t		arp_ar_sha[ETH_ADDR_LEN];
+	uint8_t		arp_ar_tha[ETH_ADDR_LEN];
 	uint32_t	arp_ar_spa;
 	uint32_t	arp_ar_tpa;
 	uint16_t	arp_ar_op;
@@ -506,5 +506,8 @@ oxm_field_bits(uint32_t header);
 
 void *
 oxm_match_lookup_info(struct oxm_packet_info *info, int oxm_label, size_t *length);
+
+void *
+copy_oxm_packet_info_into_ofl_match(struct ofl_match *match, struct oxm_packet_info *info);
 
 #endif /* nx-match.h */

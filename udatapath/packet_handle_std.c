@@ -276,11 +276,11 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
                 if (ntohs(proto->arp->ar_op) == ARP_OP_REQUEST ||
                     ntohs(proto->arp->ar_op) == ARP_OP_REPLY) {
 
-		    memcpy(&info->arp_ar_sha, proto->arp->ar_sha, ETH_ADDR_LEN);
-		    oxm_set_valid(info, arp_ar_sha);
+                memcpy(info->arp_ar_sha, proto->arp->ar_sha, ETH_ADDR_LEN);
+                oxm_set_valid(info, arp_ar_sha);
 
-		    memcpy(&info->arp_ar_tha, proto->arp->ar_tha, ETH_ADDR_LEN);
-		    oxm_set_valid(info, arp_ar_tha);
+                memcpy(info->arp_ar_tha, proto->arp->ar_tha, ETH_ADDR_LEN);
+                oxm_set_valid(info, arp_ar_tha);
 
 		    oxm_set_info(info, arp_ar_spa, proto->arp->ar_spa);
 		    oxm_set_info(info, arp_ar_tpa, proto->arp->ar_tpa);
@@ -581,8 +581,11 @@ packet_handle_std_print(FILE *stream, struct packet_handle_std *handle) {
     proto_print(stream, &handle->proto);
 
     fprintf(stream, ", match=");
-    // OXM_TODO
-    // ofl_structs_match_print(stream, (struct ofl_match_header *)(&handle->pkt_match), handle->pkt->dp->exp);
+    struct ofl_match m;
+    ofl_structs_match_init(&m);
+    copy_oxm_packet_info_into_ofl_match(&m, &handle->info);
+    ofl_structs_match_print(stream, (struct ofl_match_header *) &m, handle->pkt->dp->exp);
     fprintf(stream, "\"}");
+    ofl_structs_free_oxm_match((struct ofl_match_header* ) &m, NULL);
 }
 
