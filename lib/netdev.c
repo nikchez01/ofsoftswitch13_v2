@@ -1088,10 +1088,10 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
                                sizeof(local_buffer)-sofar, 0,
                                (struct sockaddr *)&sll, &sll_len);
 
+#endif /* ifdef HAVE_PACKET_AUXDATA  */
             if (n_bytes >= 0)
 		sofar += n_bytes;
 
-#endif /* ifdef HAVE_PACKET_AUXDATA  */
         } while (n_bytes < 0 && errno == EINTR);
     }
     if (n_bytes < 0) {
@@ -1129,8 +1129,8 @@ netdev_recv_linux(struct netdev *netdev, struct ofpbuf *buffer, size_t max_mtu)
                 /* VLAN tag found. Shift MAC addresses down and insert VLAN tag */
                 /* Create headroom for the VLAN tag */
                 eth_type = ntohs(*((uint16_t *)(buffer->data + ETHER_ADDR_LEN * 2)));
-                ofpbuf_push_uninit(buffer, VLAN_HEADER_LEN);
-                memmove(buffer->data, (uint8_t*)buffer->data+VLAN_HEADER_LEN, ETH_ALEN * 2);
+                ofpbuf_put_uninit(buffer, VLAN_HEADER_LEN);
+		memmove(buffer->data+VLAN_ETH_HEADER_LEN-2, (uint8_t*)buffer->data+ETH_HEADER_LEN-2, buffer->size-(ETHER_ADDR_LEN-2));
                 tag = (struct vlan_tag *)((uint8_t*)buffer->data + ETH_ALEN * 2);
                 if (eth_type == ETH_TYPE_VLAN_PBB_S ||
                     eth_type == ETH_TYPE_VLAN_PBB_B ||
