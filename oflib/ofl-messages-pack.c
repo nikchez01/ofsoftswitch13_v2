@@ -272,7 +272,7 @@ ofl_msg_pack_flow_mod(struct ofl_msg_flow_mod const *msg, uint8_t **buf, size_t 
     struct ofp_flow_mod *flow_mod;
     uint8_t *ptr;
 
-    int i;
+    int i,i1=0,j=0;
 
     *buf_len = ROUND_UP(sizeof(struct ofp_flow_mod)- 4 + msg->match->length,8) +
                 ofl_structs_instructions_ofp_total_len((struct ofl_instruction_header const **)msg->instructions, msg->instructions_num, exp);
@@ -291,13 +291,14 @@ ofl_msg_pack_flow_mod(struct ofl_msg_flow_mod const *msg, uint8_t **buf, size_t 
     flow_mod->out_group    = htonl( msg->out_group);
     flow_mod->flags        = htons( msg->flags);
     memset(flow_mod->pad, 0x00, 2);
-
     ptr  = (*buf) + sizeof(struct ofp_flow_mod)- 4;
     ofl_structs_match_pack(msg->match, &(flow_mod->match), ptr, exp);
     /* We advance counting the padded bytes */
     ptr = (*buf) + ROUND_UP(sizeof(struct ofp_flow_mod)- 4 + msg->match->length,8);
     for (i=0; i<msg->instructions_num; i++) {
-        ptr += ofl_structs_instructions_pack(msg->instructions[i], (struct ofp_instruction *)ptr, exp);
+        i1+= ofl_structs_instructions_pack(msg->instructions[i], (struct ofp_instruction *)ptr, exp);
+	j=i1-j;
+	ptr+=j;
     }
     return 0;
 }
@@ -1112,6 +1113,7 @@ ofl_msg_pack(struct ofl_msg_header const *msg, uint32_t xid, uint8_t **buf, size
         }
         case OFPT_FLOW_MOD: {
             error = ofl_msg_pack_flow_mod((struct ofl_msg_flow_mod *)msg, buf, buf_len, exp);
+		printf("ofl_msg_pack_flow_mod done\n");fflush(stdin);
             break;
         }
         case OFPT_GROUP_MOD: {
