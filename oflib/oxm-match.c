@@ -398,7 +398,7 @@ parse_oxm_entry(struct ofl_match *match, const struct oxm_field *f, const void *
             /* IP header. */
         case OFI_OXM_OF_IP_DSCP:{
             uint8_t const *v = (uint8_t const *) value;
-            if (*v & 0xc0) {
+            if (*v & 0x03) {
                 return ofp_mkerr(OFPET_BAD_MATCH, OFPBMC_BAD_VALUE);
             }
             else{
