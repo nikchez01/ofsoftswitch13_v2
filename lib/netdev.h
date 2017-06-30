@@ -118,8 +118,8 @@ void netdev_send_wait(struct netdev *);
 /* Network device TC/QOS API */
 
 int netdev_setup_slicing(struct netdev *, uint16_t);
-int netdev_setup_class(const struct netdev *, uint16_t , uint16_t);
-int netdev_change_class(const struct netdev *, uint16_t , uint16_t);
+int netdev_setup_class(const struct netdev *, uint16_t , uint16_t, uint16_t);
+int netdev_change_class(const struct netdev *, uint16_t , uint16_t, uint16_t);
 int netdev_delete_class(const struct netdev *, uint16_t);
 
 

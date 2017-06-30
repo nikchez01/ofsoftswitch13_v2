@@ -1047,6 +1047,7 @@ queue_mod(struct vconn *vconn, int argc UNUSED, char *argv[])
 {
     struct ofl_packet_queue *pq;
     struct ofl_queue_prop_min_rate *p;
+    struct ofl_queue_prop_max_rate *p1;
 
     struct ofl_exp_openflow_msg_queue msg =
             {{{{.type = OFPT_EXPERIMENTER},
@@ -1065,15 +1066,21 @@ queue_mod(struct vconn *vconn, int argc UNUSED, char *argv[])
         ofp_fatal(0, "Error parsing queue_mod queue: %s.", argv[1]);
     }
 
-    pq->properties_num = 1;
-    pq->properties = xmalloc(sizeof(struct ofl_queue_prop_header *));
+    pq->properties_num = 2;
+    pq->properties = xmalloc(sizeof(struct ofl_queue_prop_header *)*pq->properties_num);
 
     p = xmalloc(sizeof(struct ofl_queue_prop_min_rate));
+    p1 = xmalloc(sizeof(struct ofl_queue_prop_max_rate));
     pq->properties[0] = (struct ofl_queue_prop_header *)p;
     p->header.type = OFPQT_MIN_RATE;
+    pq->properties[1] = (struct ofl_queue_prop_header *)p1;
+    p1->header.type = OFPQT_MAX_RATE;
 
     if (parse16(argv[2], NULL,0, UINT16_MAX, &p->rate)) {
         ofp_fatal(0, "Error parsing queue_mod bw: %s.", argv[2]);
+    }
+    if (parse16(argv[3], NULL,0, UINT16_MAX, &p1->rate)) {
+        ofp_fatal(0, "Error parsing queue_mod bw: %s.", argv[3]);
     }
 
 
@@ -1156,7 +1163,7 @@ static struct command all_commands[] = {
     {"set-desc", 1, 1, set_desc},
     {"set-table-match", 0, 2, set_table_features_match},
 
-    {"queue-mod", 3, 3, queue_mod},
+    {"queue-mod", 4, 4, queue_mod},
     {"queue-del", 2, 2, queue_del}
 };
 

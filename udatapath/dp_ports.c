@@ -985,7 +985,8 @@ dp_ports_handle_queue_get_config_request(struct datapath *dp,
 static int
 new_queue(struct sw_port * port, struct sw_queue * queue,
           uint32_t queue_id, uint16_t class_id,
-          struct ofl_queue_prop_min_rate * mr)
+          struct ofl_queue_prop_min_rate * mr,
+          struct ofl_queue_prop_max_rate * mr1)
 {
     uint64_t now = time_msec();
 
@@ -1012,10 +1013,13 @@ new_queue(struct sw_port * port, struct sw_queue * queue,
     queue->props = xmalloc(sizeof(struct ofl_packet_queue));
     queue->props->queue_id = queue_id;
     queue->props->properties = xmalloc(sizeof(struct ofl_queue_prop_header *));
-    queue->props->properties_num = 1;
+    queue->props->properties_num = 2;
     queue->props->properties[0] = xmalloc(sizeof(struct ofl_queue_prop_min_rate));
     ((struct ofl_queue_prop_min_rate *)(queue->props->properties[0]))->header.type = OFPQT_MIN_RATE;
     ((struct ofl_queue_prop_min_rate *)(queue->props->properties[0]))->rate = mr->rate;
+    queue->props->properties[1] = xmalloc(sizeof(struct ofl_queue_prop_max_rate));
+    ((struct ofl_queue_prop_max_rate *)(queue->props->properties[1]))->header.type = OFPQT_MAX_RATE;
+    ((struct ofl_queue_prop_max_rate *)(queue->props->properties[1]))->rate = mr1->rate;
 
     port->num_queues++;
     return 0;
@@ -1023,7 +1027,7 @@ new_queue(struct sw_port * port, struct sw_queue * queue,
 
 static int
 port_add_queue(struct sw_port *p, uint32_t queue_id,
-               struct ofl_queue_prop_min_rate * mr)
+               struct ofl_queue_prop_min_rate * mr, struct ofl_queue_prop_max_rate * mr1)
 {
     if (queue_id >= p->max_queues) {
         return EXFULL;
@@ -1033,7 +1037,7 @@ port_add_queue(struct sw_port *p, uint32_t queue_id,
         return EXFULL;
     }
 
-    return new_queue(p, &(p->queues[queue_id]), queue_id, queue_id, mr);
+    return new_queue(p, &(p->queues[queue_id]), queue_id, queue_id, mr,mr1);
 }
 
 static int
@@ -1058,8 +1062,10 @@ dp_ports_handle_queue_modify(struct datapath *dp, struct ofl_exp_openflow_msg_qu
         q = dp_ports_lookup_queue(p, msg->queue->queue_id);
         if (q != NULL) {
             /* queue exists - modify it */
+		//netdev_get_link_speed(p->netdev);
             error = netdev_change_class(p->netdev,q->class_id,
-                                 ((struct ofl_queue_prop_min_rate *)msg->queue->properties[0])->rate);
+                                 ((struct ofl_queue_prop_min_rate *)msg->queue->properties[0])->rate,
+				  ((struct ofl_queue_prop_max_rate *)msg->queue->properties[1])->rate);
              if (error) {
                  VLOG_ERR(LOG_MODULE, "Failed to update queue %d", msg->queue->queue_id);
                  return ofl_error(OFPET_QUEUE_OP_FAILED, OFPQOFC_EPERM);
@@ -1067,19 +1073,23 @@ dp_ports_handle_queue_modify(struct datapath *dp, struct ofl_exp_openflow_msg_qu
              else {
                  ((struct ofl_queue_prop_min_rate *)q->props->properties[0])->rate =
                          ((struct ofl_queue_prop_min_rate *)msg->queue->properties[0])->rate;
+                 ((struct ofl_queue_prop_max_rate *)q->props->properties[0])->rate =
+                         ((struct ofl_queue_prop_max_rate *)msg->queue->properties[1])->rate;
              }
 
         } else {
             /* create new queue */
             error = port_add_queue(p, msg->queue->queue_id,
-                                       (struct ofl_queue_prop_min_rate *)msg->queue->properties[0]);
+                                       (struct ofl_queue_prop_min_rate *)msg->queue->properties[0],
+					(struct ofl_queue_prop_max_rate *)msg->queue->properties[1]);
             if (error == EXFULL) {
                 return ofl_error(OFPET_QUEUE_OP_FAILED, OFPQOFC_EPERM);
             }
 
             q = dp_ports_lookup_queue(p, msg->queue->queue_id);
                 error = netdev_setup_class(p->netdev,q->class_id,
-                                ((struct ofl_queue_prop_min_rate *)msg->queue->properties[0])->rate);
+                                ((struct ofl_queue_prop_min_rate *)msg->queue->properties[0])->rate,
+				 ((struct ofl_queue_prop_max_rate *)msg->queue->properties[1])->rate);
                 if (error) {
                     VLOG_ERR(LOG_MODULE, "Failed to configure queue %d", msg->queue->queue_id);
                     return ofl_error(OFPET_QUEUE_OP_FAILED, OFPQOFC_BAD_QUEUE);
