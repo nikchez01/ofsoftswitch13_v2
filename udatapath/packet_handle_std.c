@@ -185,7 +185,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             // Note: DL type is updated
             //
-	    eth_type = ntohs(proto->vlan_last->vlan_next_type);
+	    eth_type = ntohs(proto->vlan->vlan_next_type);
             if (eth_type != ETH_TYPE_VLAN &&
                 eth_type != ETH_TYPE_VLAN_PBB) {
 
