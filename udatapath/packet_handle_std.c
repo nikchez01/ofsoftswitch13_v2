@@ -185,7 +185,7 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
 
             // Note: DL type is updated
             //
-	    eth_type = ntohs(proto->vlan->vlan_next_type);
+	    eth_type = ntohs(proto->vlan_last->vlan_next_type);
             if (eth_type != ETH_TYPE_VLAN &&
                 eth_type != ETH_TYPE_VLAN_PBB) {
 
@@ -203,14 +203,14 @@ int packet_parse(struct packet const *pkt, struct oxm_packet_info *info, struct 
             proto->vlan_last = (struct vlan_header *)((uint8_t const *) pkt->buffer->data + offset);
             offset += sizeof(struct vlan_header);
 
-	    eth_type = ntohs(proto->vlan->vlan_next_type);
+	    eth_type = ntohs(proto->vlan_last->vlan_next_type);
             if (eth_type != ETH_TYPE_VLAN &&
                 eth_type != ETH_TYPE_VLAN_PBB) {
 
                 oxm_set_info(info, eth_type, eth_type);
             };
         }
-
+	
 
 	switch(eth_type) {
 
